@@ -124,6 +124,44 @@ namespace OpenUtau.Core.Ustx {
             SetSteps(steps);
         }
 
+        /// <summary>
+        /// Applies clear ranges and then value writes in one pass. Each Clear and
+        /// SetValues rebuilds the whole curve, so writing a batch of retaken ranges
+        /// through them rebuilds it once per range; this touches the steps once.
+        /// The result is what clear-then-write leaves: ranges removed first, values
+        /// written after.
+        /// </summary>
+        public void ApplyRanges(IEnumerable<(int from, int to)> clears, IEnumerable<(int x, float y)> values) {
+            var steps = ToSteps();
+            var ranges = new List<(int a, int b)>();
+            foreach (var (from, to) in clears) {
+                var a = Snap(from);
+                var b = Snap(to);
+                ranges.Add(a <= b ? (a, b) : (b, a));
+            }
+            ranges.Sort();
+            var toRemove = new List<int>();
+            var rangeIndex = 0;
+            foreach (var x in steps.Keys) {
+                while (rangeIndex < ranges.Count && ranges[rangeIndex].b < x) {
+                    ++rangeIndex;
+                }
+                if (rangeIndex == ranges.Count) {
+                    break;
+                }
+                if (x >= ranges[rangeIndex].a) {
+                    toRemove.Add(x);
+                }
+            }
+            foreach (var x in toRemove) {
+                steps.Remove(x);
+            }
+            foreach (var (x, y) in values) {
+                steps[Snap(x)] = y;
+            }
+            SetSteps(steps);
+        }
+
         /// <summary>Removes the values from one tick to another, both included.</summary>
         public void Clear(int x0, int x1) {
             x0 = Snap(x0);

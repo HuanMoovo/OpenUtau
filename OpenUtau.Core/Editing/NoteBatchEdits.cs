@@ -589,10 +589,8 @@ namespace OpenUtau.Core.Editing {
                     var curve = part.maskedCurves.FirstOrDefault(c => c.abbr == Format.Ustx.RPIT)?.Clone()
                         ?? new UMaskedCurve(Format.Ustx.RPIT);
                     // Every retaken range first, so neighbouring phrases don't clear each other's values.
-                    foreach (var (from, to) in cleared) {
-                        curve.Clear(from, to);
-                    }
-                    curve.SetValues(rendered);
+                    // Applied in one pass: each Clear and SetValues rebuilds the whole curve.
+                    curve.ApplyRanges(cleared, rendered);
                     all.Add(new ReplaceMaskedCurveCommand(part, Format.Ustx.RPIT, curve));
                 }
                 if (recordUndo) {

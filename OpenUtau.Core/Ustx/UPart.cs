@@ -201,10 +201,19 @@ namespace OpenUtau.Core.Ustx {
                         foreach (var note in notes) {
                             note.phonemizerExpressions.Clear();
                         }
+                        // The response indexes notes in the set's order; materializing it
+                        // once keeps the per-group lookup from walking the sorted set,
+                        // which made the loop O(notes) per group.
+                        var noteList = notes.ToArray();
+                        // Duplicate (note, index) pairs are rejected as they are seen; a
+                        // set makes that check O(1) instead of a scan of the accumulated
+                        // phonemes per phoneme.
+                        var seenPhonemes = new HashSet<(UNote, int)>();
 
                         for (int i = 0; i < resp.phonemes.Length; ++i) {
                             var indexes = new List<int>();
-                            var note = notes.ElementAtOrDefault(resp.noteIndexes[i]);
+                            var noteIndex = resp.noteIndexes[i];
+                            var note = noteIndex >= 0 && noteIndex < noteList.Length ? noteList[noteIndex] : null;
                             for (int j = 0; j < resp.phonemes[i].Length; ++j) {
                                 var phoneme = new UPhoneme() {
                                     rawPosition = resp.phonemes[i][j].position - position,
@@ -214,7 +223,7 @@ namespace OpenUtau.Core.Ustx {
                                     ErrorException = resp.phonemes[i][j].error
                                 };
                                 // Check for duplicate indexes
-                                if (phonemes.Any(p => p.Parent == phoneme.Parent && p.index == phoneme.index)) {
+                                if (!seenPhonemes.Add((phoneme.Parent, phoneme.index))) {
                                     try {
                                         throw new ArgumentException("Duplicate phoneme index.");
                                     } catch (Exception e) {
