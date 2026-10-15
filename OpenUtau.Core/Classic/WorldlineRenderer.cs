@@ -8,7 +8,6 @@ using System.Xml.Linq;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
 using NAudio.Wave;
-using NumSharp;
 using OpenUtau.Core;
 using OpenUtau.Core.Format;
 using OpenUtau.Core.Render;
@@ -145,13 +144,25 @@ namespace OpenUtau.Classic {
                         paddedLength = (int)Math.Ceiling((float)(paddedLength + 4) / 16) * 16;
                         int leftPadding = 4;
                         int rightPadding = paddedLength - totalFrames - leftPadding;
-                        int spSize = spEnvOut.shape[1];
-                        f0Out = np.concatenate(new NDArray[] { np.zeros((leftPadding)), f0Out, np.zeros((rightPadding)) }, axis: 0);
-                        spEnvOut = np.concatenate(new NDArray[] { np.zeros((leftPadding, spSize)), spEnvOut, np.zeros((rightPadding, spSize)) }, axis: 0);
-                        apOut = np.concatenate(new NDArray[] { np.ones((leftPadding, spSize)), apOut, np.ones((rightPadding, spSize)) }, axis: 0);
-                        var f0Tensor = new DenseTensor<float>(f0Out.astype(typeof(float)).ToArray<float>(), new int[] { 1, paddedLength });
-                        var spEnvTensor = new DenseTensor<float>(spEnvOut.astype(typeof(float)).ToArray<float>(), new int[] { 1, paddedLength, spEnvOut.shape[1] });
-                        var apTensor = new DenseTensor<float>(apOut.astype(typeof(float)).ToArray<float>(), new int[] { 1, paddedLength, apOut.shape[1] });
+                        int spSize = phraseSynth.SpSize;
+                        // Padded on flat buffers: f0 and sp_env with zeros, ap with ones, as
+                        // the np.concatenate this replaces did, cast to float on the way in.
+                        var f0Padded = new float[paddedLength];
+                        var spEnvPadded = new float[paddedLength * spSize];
+                        var apPadded = new float[paddedLength * spSize];
+                        Array.Fill(apPadded, 1f);
+                        for (int i = 0; i < totalFrames; ++i) {
+                            f0Padded[leftPadding + i] = (float)f0Out[i];
+                            int src = i * spSize;
+                            int dst = (leftPadding + i) * spSize;
+                            for (int k = 0; k < spSize; ++k) {
+                                spEnvPadded[dst + k] = (float)spEnvOut[src + k];
+                                apPadded[dst + k] = (float)apOut[src + k];
+                            }
+                        }
+                        var f0Tensor = new DenseTensor<float>(f0Padded, new int[] { 1, paddedLength });
+                        var spEnvTensor = new DenseTensor<float>(spEnvPadded, new int[] { 1, paddedLength, spSize });
+                        var apTensor = new DenseTensor<float>(apPadded, new int[] { 1, paddedLength, spSize });
                         var inputs = new List<NamedOnnxValue> {
                             NamedOnnxValue.CreateFromTensor("f0", f0Tensor),
                             NamedOnnxValue.CreateFromTensor("sp_env", spEnvTensor),

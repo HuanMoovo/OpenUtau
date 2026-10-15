@@ -693,17 +693,29 @@ namespace OpenUtau.Core.Render {
                 voicingCurve = voicing;
             }
 
-            public (int, NDArray, NDArray, NDArray) SynthFeatures() {
+            /// <summary>Bins per frame in <see cref="SynthFeatures"/>: fft_size / 2 + 1.</summary>
+            public int SpSize => config.fft_size / 2 + 1;
+
+            public (int, double[], double[], double[]) SynthFeatures() {
                 AnalyzeRequests();
                 int spSize = config.fft_size / 2 + 1;
                 int totalFrames = segments.Max(s => s.p4) + 1;
-                NDArray f0Out = np.zeros<double>(totalFrames);
-                NDArray spEnvOut = np.full<double>(1e-12, new int[] { totalFrames, spSize });
-                NDArray apOut = np.full<double>(1.0, new int[] { totalFrames, spSize });
-                NDArray dirty = np.zeros<int>(totalFrames);
+                // Blended on flat row-major buffers rather than through NDArray rows: the
+                // row form allocated a temporary per operator and ran a NumSharp kernel
+                // per frame, while the same blend already runs on flat buffers in
+                // SynthContinuousNoise. sp and ap are [totalFrames][spSize] row-major.
+                var f0 = new double[totalFrames];
+                var sp = new double[totalFrames * spSize];
+                var ap = new double[totalFrames * spSize];
+                var dirty = new bool[totalFrames];
+                Array.Fill(sp, 1e-12);
+                Array.Fill(ap, 1.0);
 
                 for (int i = 0; i < segments.Count; ++i) {
                     var segment = segments[i];
+                    var segF0 = segment.f0.ToArray<double>();
+                    var segSp = segment.spEnv.ToArray<double>();
+                    var segAp = segment.ap.ToArray<double>();
                     for (int j = segment.FirstFrame; j < segment.EndFrame; ++j) {
                         double weight = 1.0;
                         if (j < segment.p1) {
@@ -712,34 +724,38 @@ namespace OpenUtau.Core.Render {
                             weight = (double)(segment.p4 - j) / (segment.p4 - segment.p3);
                         }
                         int segIdx = segment.skipFrames + j - segment.p0;
-                        if (dirty.GetAtIndex<int>(j) == 0 || weight > 0.5) {
-                            f0Out[j] = segment.f0[segIdx];
+                        if (!dirty[j] || weight > 0.5) {
+                            f0[j] = segF0[segIdx];
                         }
-                        spEnvOut[j] = spEnvOut[j] + segment.spEnv[segIdx] * weight;
-                        double wa = dirty.GetAtIndex<int>(j) == 0 ? 0.0 : (1.0 - weight);
-                        double wb = dirty.GetAtIndex<int>(j) == 0 ? 1.0 : weight;
-                        apOut[j] = apOut[j] * wa + segment.ap[segIdx] * wb;
-                        dirty[j] = 1;
+                        double wa = dirty[j] ? 1.0 - weight : 0.0;
+                        double wb = dirty[j] ? weight : 1.0;
+                        int row = j * spSize;
+                        int segRow = segIdx * spSize;
+                        for (int k = 0; k < spSize; ++k) {
+                            sp[row + k] += segSp[segRow + k] * weight;
+                            ap[row + k] = ap[row + k] * wa + segAp[segRow + k] * wb;
+                        }
+                        dirty[j] = true;
                     }
                 }
 
                 // Repeat the last frame; the wavtool fades the phrase out.
                 if (totalFrames >= 2) {
-                    f0Out[totalFrames - 1] = f0Out[totalFrames - 2];
-                    spEnvOut[totalFrames - 1] = spEnvOut[totalFrames - 2];
-                    apOut[totalFrames - 1] = apOut[totalFrames - 2];
+                    f0[totalFrames - 1] = f0[totalFrames - 2];
+                    Array.Copy(sp, (totalFrames - 2) * spSize, sp, (totalFrames - 1) * spSize, spSize);
+                    Array.Copy(ap, (totalFrames - 2) * spSize, ap, (totalFrames - 1) * spSize, spSize);
                 }
 
                 if (f0Curve != null) {
                     var f0Fit = FitCurve(f0Curve, totalFrames, 0);
                     for (int i = 0; i < totalFrames; ++i) {
-                        if (f0Out.GetAtIndex<double>(i) > config.f0_floor) {
-                            f0Out[i] = f0Fit[i];
+                        if (f0[i] > config.f0_floor) {
+                            f0[i] = f0Fit[i];
                         }
                     }
                 }
 
-                return (totalFrames, f0Out, spEnvOut, apOut);
+                return (totalFrames, f0, sp, ap);
             }
 
             public float[] Synth() {
@@ -749,13 +765,10 @@ namespace OpenUtau.Core.Render {
                 }
                 var (totalFrames, f0Out, spEnvOut, apOut) = SynthFeatures();
                 int spSize = config.fft_size / 2 + 1;
-                double[] f0Array = f0Out.ToArray<double>();
-                double[] spEnvArray = spEnvOut.ToArray<double>();
-                double[] apArray = apOut.ToArray<double>();
                 double[] samples = WorldSynthesis(
-                    f0Array,
-                    spEnvArray, false, spSize,
-                    apArray, false, config.fft_size,
+                    f0Out,
+                    spEnvOut, false, spSize,
+                    apOut, false, config.fft_size,
                     config.frame_ms, config.fs,
                     FitCurve(genderCurve, totalFrames, 0.5),
                     FitCurve(tensionCurve, totalFrames, 0.5),
