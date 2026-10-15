@@ -761,7 +761,7 @@ namespace OpenUtau.Core.Render {
                     FitCurve(tensionCurve, totalFrames, 0.5),
                     FitCurve(breathinessCurve, totalFrames, 0.5),
                     FitCurve(voicingCurve, totalFrames, 1.0));
-                return samples.Select(s => (float)s).ToArray();
+                return ToFloatArray(samples);
             }
 
             /// <summary>
@@ -848,7 +848,20 @@ namespace OpenUtau.Core.Render {
                     FitCurve(null, totalFrames, 0.5),  // tension is applied as Rd above
                     FitCurve(breathinessCurve, totalFrames, 0.5),
                     FitCurve(voicingCurve, totalFrames, 1.0));
-                return samples.Select(s => (float)s).ToArray();
+                return ToFloatArray(samples);
+            }
+
+            /// <summary>
+            /// Copies the synthesized samples to float. An indexed loop rather than
+            /// LINQ: this runs over every sample of every phrase render, and ToArray
+            /// on a Select would invoke a delegate and grow a builder per sample.
+            /// </summary>
+            static float[] ToFloatArray(double[] samples) {
+                var result = new float[samples.Length];
+                for (var i = 0; i < samples.Length; ++i) {
+                    result[i] = (float)samples[i];
+                }
+                return result;
             }
 
             /// <summary>

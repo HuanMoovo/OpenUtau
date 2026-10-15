@@ -127,6 +127,7 @@ namespace OpenUtau.Audio {
         }
 
         float[] temp = new float[0];
+        byte[] bytes = new byte[0];
 
         private unsafe void DataCallback(IntPtr userdata, IntPtr streamPtr, int additionalAmount, int totalAmount) {
             if (additionalAmount <= 0) {
@@ -149,10 +150,15 @@ namespace OpenUtau.Audio {
                 eof = true;
             }
 
-            // Convert float[] to byte[] (SDL expects native float bytes for AudioF32)
+            // Convert float[] to byte[] (SDL expects native float bytes for AudioF32).
+            // Both buffers are reused: this callback runs on the audio device thread,
+            // where allocating per call hands the GC a chance to cause a dropout. The
+            // copy covers the same bytes as before, including the zeroed tail.
             int bytesLen = samples * sizeof(float);
-            var bytes = new byte[bytesLen];
-            Buffer.BlockCopy(temp, 0, bytes, 0, Math.Min(n * sizeof(float), bytesLen));
+            if (bytes.Length < bytesLen) {
+                bytes = new byte[bytesLen];
+            }
+            Buffer.BlockCopy(temp, 0, bytes, 0, bytesLen);
 
             if (!SDL.PutAudioStreamData(streamPtr, bytes, bytesLen)) {
                 Log.Warning($"Failed to put SDL audio stream data: {SDL.GetError()}");
