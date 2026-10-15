@@ -348,38 +348,58 @@ namespace OpenUtau.Core {
         }
 
         private void RebuildPartSlots(UPart part, ulong phraseHash, Frozen<float> frozen) {
+            HashSet<int> touched = null;
             for (int p = 0; p < sessionParts.Count; ++p) {
                 var ps = sessionParts[p];
                 if (!ReferenceEquals(ps.part, part)) {
                     continue;
                 }
+                bool replaced = false;
                 for (int i = 0; i < ps.samples.Count; ++i) {
                     if (ps.specs[i].hash == phraseHash) {
                         var spec = ps.specs[i];
                         ps.samples[i] = new SampleSlot(spec.offsetMs, spec.estimatedLengthMs, spec.channels,
                             frozen, SlotState.Ready);
+                        replaced = true;
                     }
                 }
+                if (replaced) {
+                    (touched ??= new HashSet<int>()).Add(ps.trackNo);
+                }
             }
-            RebuildAll();
+            if (touched == null) {
+                return;
+            }
+            // Only the tracks that changed are republished: the render pass registers
+            // one phrase at a time, and rebuilding every track for each of them made
+            // a pass cost O(phrases x slots).
+            foreach (var track in trackOrder) {
+                if (touched.Contains(track.TrackNo)) {
+                    RebuildTrack(track);
+                }
+            }
         }
 
         /// <summary>
-        /// Publishes a fresh slot array per track. Order within a track follows the
+        /// Publishes a fresh slot array for one track. Order within a track follows the
         /// spec order (part order, then phrase order); a part's wave slot (hash 0,
         /// added last by the engine) therefore comes after its phrases.
         /// </summary>
+        private void RebuildTrack(TrackState track) {
+            var list = new List<SampleSlot>();
+            for (int p = 0; p < sessionParts.Count; ++p) {
+                var ps = sessionParts[p];
+                if (ps.trackNo != track.TrackNo) {
+                    continue;
+                }
+                list.AddRange(ps.samples);
+            }
+            track.Source.SetSlots(list.ToArray());
+        }
+
         private void RebuildAll() {
             foreach (var track in trackOrder) {
-                var list = new List<SampleSlot>();
-                for (int p = 0; p < sessionParts.Count; ++p) {
-                    var ps = sessionParts[p];
-                    if (ps.trackNo != track.TrackNo) {
-                        continue;
-                    }
-                    list.AddRange(ps.samples);
-                }
-                track.Source.SetSlots(list.ToArray());
+                RebuildTrack(track);
             }
         }
     }
