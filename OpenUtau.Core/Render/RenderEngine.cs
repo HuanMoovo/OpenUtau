@@ -357,9 +357,13 @@ namespace OpenUtau.Core.Render {
             var coverageRanges = maintainCoverage
                 ? new Dictionary<UVoicePart, List<(int start, int end)>>()
                 : null;
-            foreach (var tuple in tupleArray) {
+            // Phrases run in parallel when every renderer in the pass declares that it
+            // can render several phrases at once (see IRenderer.SupportsConcurrentRender);
+            // one renderer that cannot keeps the whole pass serial.
+            int parallelism = RenderParallelism(tupleArray);
+            void RenderOne((RenderPhrase phrase, double offsetMs, double estimatedLengthMs, RenderPartRequest request) tuple) {
                 if (cancellation.IsCancellationRequested) {
-                    break;
+                    return;
                 }
                 var phrase = tuple.phrase;
                 var request = tuple.request;
@@ -374,7 +378,7 @@ namespace OpenUtau.Core.Render {
                     var task = phrase.renderer.Render(phrase, progress, request.trackNo, cancellation, true, renderEvents);
                     task.Wait();
                     if (cancellation.IsCancellationRequested) {
-                        break;
+                        return;
                     }
                     planner.RegisterPcm(request.part, phrase.hash, tuple.offsetMs, tuple.estimatedLengthMs, 1, task.Result.samples);
                 } else {
@@ -384,7 +388,7 @@ namespace OpenUtau.Core.Render {
                         var taskA = phrase.renderer.Render(phrase, progress, request.trackNo, cancellation, true, renderEvents);
                         taskA.Wait();
                         if (cancellation.IsCancellationRequested) {
-                            break;
+                            return;
                         }
                         float[] samplesA = taskA.Result.samples;
                         // The secondary render runs on a separate phrase with oto2
@@ -393,7 +397,7 @@ namespace OpenUtau.Core.Render {
                         var taskB = phrase.renderer.Render(variant, progress, request.trackNo, cancellation, true);
                         taskB.Wait();
                         if (cancellation.IsCancellationRequested) {
-                            break;
+                            return;
                         }
                         float[] samplesB = taskB.Result.samples;
 
@@ -428,22 +432,63 @@ namespace OpenUtau.Core.Render {
                     publishedUpdates = PublishRealCurveUpdates(request.part, phrase);
                 }
                 if (coverageRanges != null && publishedUpdates != null) {
-                    AccumulateCoverage(coverageRanges, request.part, publishedUpdates);
+                    lock (coverageRanges) {
+                        AccumulateCoverage(coverageRanges, request.part, publishedUpdates);
+                    }
                 }
-                if (++request.completedPhrases == request.phrases.Length) {
+                if (Interlocked.Increment(ref request.completedPhrases) == request.phrases.Length) {
                     planner.MarkPartComplete(request.part, request.phrases.Select(p => p.hash));
-                    if (coverageRanges != null &&
-                        phrase.renderer.SupportsRealCurve &&
-                        coverageRanges.TryGetValue(request.part, out var ranges) &&
-                        ranges.Count > 0) {
-                        DocManager.Inst.ExecuteCmd(new RealCurveCoverageNotification(request.part, ranges));
+                    List<(int start, int end)> coverageToPublish = null;
+                    if (coverageRanges != null && phrase.renderer.SupportsRealCurve) {
+                        lock (coverageRanges) {
+                            // The part's phrases are all done, so its ranges are complete.
+                            if (coverageRanges.TryGetValue(request.part, out var ranges) && ranges.Count > 0) {
+                                coverageToPublish = ranges;
+                            }
+                        }
+                    }
+                    if (coverageToPublish != null) {
+                        DocManager.Inst.ExecuteCmd(new RealCurveCoverageNotification(request.part, coverageToPublish));
                     }
                     DocManager.Inst.ExecuteCmd(new PartRenderedNotification(request.part));
+                }
+            }
+            if (parallelism <= 1) {
+                foreach (var tuple in tupleArray) {
+                    if (cancellation.IsCancellationRequested) {
+                        break;
+                    }
+                    RenderOne(tuple);
+                }
+            } else {
+                try {
+                    Parallel.For(0, tupleArray.Length,
+                        new ParallelOptions { MaxDegreeOfParallelism = parallelism, CancellationToken = cancellation.Token },
+                        i => RenderOne(tupleArray[i]));
+                } catch (OperationCanceledException) {
+                    // The pass was cancelled; whatever finished is already registered.
                 }
             }
             progress.Clear();
             // Immediate final refresh once the pass is done.
             DocManager.Inst.ExecuteCmd(new WaveformReadyNotification());
+        }
+
+        /// <summary>
+        /// Phrase-level parallelism for a pass: the configured render thread budget,
+        /// capped by the phrase count, or 1 when any phrase's renderer cannot render
+        /// several phrases at once.
+        /// </summary>
+        int RenderParallelism((RenderPhrase phrase, double offsetMs, double estimatedLengthMs, RenderPartRequest request)[] tuples) {
+            if (tuples.Length <= 1) {
+                return 1;
+            }
+            foreach (var tuple in tuples) {
+                if (!tuple.phrase.renderer.SupportsConcurrentRender) {
+                    return 1;
+                }
+            }
+            return Math.Clamp(Preferences.Default.NumRenderThreads, 1, tuples.Length);
         }
 
         private RealCurveUpdate[]? PublishRealCurveUpdates(UVoicePart part, RenderPhrase phrase) {

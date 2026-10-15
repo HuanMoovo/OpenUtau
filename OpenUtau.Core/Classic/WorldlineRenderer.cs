@@ -61,6 +61,10 @@ namespace OpenUtau.Classic {
         public USingerType SingerType => USingerType.Classic;
 
         public bool SupportsRenderPitch => false;
+        // Every render works on its own phrase (its own PhraseSynthV2 and analysis), and
+        // the cached wave file is guarded per path through Renderers.GetCacheLock, so
+        // phrases of a pass can render on several threads.
+        public bool SupportsConcurrentRender => true;
 
         public bool SupportsExpression(UExpressionDescriptor descriptor) {
             return supportedExp.Contains(descriptor.abbr);

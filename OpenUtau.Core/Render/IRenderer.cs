@@ -99,6 +99,12 @@ namespace OpenUtau.Core.Render {
         bool SupportsRenderPitch => false;
         bool SupportsRealCurve => false;
         bool SupportsPhonemeEnvelope => true;
+        /// <summary>
+        /// True when <see cref="Render"/> can run for several phrases at once. A renderer
+        /// that shares mutable state between renders, or serializes itself on a GPU
+        /// scope or a global lock, keeps this false and its render passes stay serial.
+        /// </summary>
+        bool SupportsConcurrentRender => false;
         bool SupportsExpression(UExpressionDescriptor descriptor);
         RenderResult Layout(RenderPhrase phrase);
 
