@@ -1625,24 +1625,39 @@ namespace OpenUtau.Plugin.Builtin {
         }
 
         public class Replacement {
-            public object from { get; set; }
-            public object to { get; set; }
-            public string where { get; set; } = "inside";
+            object fromValue;
+            object toValue;
+            List<string> fromList;
+            List<string> toList;
 
-            public List<string> FromList {
-                get {
-                    if (from is string s) return new List<string> { s };
-                    if (from is IEnumerable<object> list) return list.Select(x => x.ToString() ?? "null").ToList();
-                    return new List<string>();
+            public object from {
+                get => fromValue;
+                set {
+                    fromValue = value;
+                    fromList = null;
                 }
             }
 
-            public List<string> ToList {
-                get {
-                    if (to is string s) return new List<string> { s };
-                    if (to is IEnumerable<object> list) return list.Select(x => x.ToString() ?? "null").ToList();
-                    return new List<string>();
+            public object to {
+                get => toValue;
+                set {
+                    toValue = value;
+                    toList = null;
                 }
+            }
+
+            public string where { get; set; } = "inside";
+
+            // Parsed once and cached: the getters are read for every rule at every
+            // phoneme position, and rebuilding the lists per read allocates per rule.
+            public List<string> FromList => fromList ??= Parse(fromValue);
+
+            public List<string> ToList => toList ??= Parse(toValue);
+
+            static List<string> Parse(object value) {
+                if (value is string s) return new List<string> { s };
+                if (value is IEnumerable<object> list) return list.Select(x => x.ToString() ?? "null").ToList();
+                return new List<string>();
             }
         }
 

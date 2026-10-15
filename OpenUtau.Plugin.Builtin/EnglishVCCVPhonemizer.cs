@@ -303,9 +303,31 @@ namespace OpenUtau.Plugin.Builtin {
         private (UNote un, UNote unNext) UNoteAt(int absPos) {
             if (unotes.Count == 0) return (null, null);
             int relPos = absPos - partPos;
-            var un = unotes.LastOrDefault(n => n.position <= relPos) ?? unotes[0];
-            int idx = unotes.IndexOf(un);
-            return (un, idx + 1 < unotes.Count ? unotes[idx + 1] : null);
+            // The notes are position-sorted, so the note is found by binary search
+            // rather than by scanning the list twice per lookup; this runs several
+            // times per phoneme.
+            int idx = LastNoteAtOrBefore(relPos);
+            return (unotes[idx], idx + 1 < unotes.Count ? unotes[idx + 1] : null);
+        }
+
+        /// <summary>
+        /// Index of the last note whose position is at or before <paramref name="relPos"/>,
+        /// or 0 when every note starts after it. The notes are sorted by position, and
+        /// among notes at the same position this is the last of them, which is the note
+        /// the previous scan returned too.
+        /// </summary>
+        int LastNoteAtOrBefore(int relPos) {
+            int lo = 0, hi = unotes.Count - 1, result = -1;
+            while (lo <= hi) {
+                int mid = (lo + hi) >> 1;
+                if (unotes[mid].position <= relPos) {
+                    result = mid;
+                    lo = mid + 1;
+                } else {
+                    hi = mid - 1;
+                }
+            }
+            return result < 0 ? 0 : result;
         }
         
         // Automatic convel
