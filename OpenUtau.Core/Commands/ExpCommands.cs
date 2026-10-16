@@ -75,8 +75,10 @@ namespace OpenUtau.Core {
         }
         public override string ToString() => $"Set note expression {Key}";
         public override void Execute() {
+            // SetExpression only reads the values, so one array serves every note.
+            var values = new float?[] { newValue };
             for (var i = 0; i < notes.Length; i++) {
-                notes[i].SetExpression(project, track, Key, new float?[] { newValue });
+                notes[i].SetExpression(project, track, Key, values);
             }
         }
         public override void Unexecute() {
@@ -375,6 +377,104 @@ namespace OpenUtau.Core {
             return new MergedSetCurveCommand(
                 last.project, last.Part, last.abbr,
                 first.oldXs, first.oldYs, newXs, newYs);
+        }
+    }
+
+    /// <summary>
+    /// A whole pass of samples onto one curve, as a single command. One
+    /// <see cref="SetCurveCommand"/> per sample snapshotted the whole curve once per
+    /// sample, on the thread that built the commands, and a pass of thousands of
+    /// samples left thousands of snapshots in the undo queue when the group could not
+    /// merge. The replay itself is the same <see cref="UCurve.Set"/> calls, in the
+    /// same order, as the per-sample commands made.
+    /// </summary>
+    public class SetCurveBatchCommand : ExpCommand {
+        readonly UProject project;
+        readonly string abbr;
+        /// <summary>The writes <see cref="Execute"/> replays, in order.</summary>
+        public readonly (int x, int y, int lastX, int lastY)[] points;
+        readonly bool snapshot;
+        int[]? oldXs;
+        int[]? oldYs;
+        public override ValidateOptions ValidateOptions
+            => new ValidateOptions {
+                SkipTiming = true,
+                Part = Part,
+                SkipPhonemizer = true,
+                SkipPhoneme = true,
+            };
+        /// <param name="snapshot">
+        /// Whether the curve's points before the edit are recorded for <see cref="Unexecute"/>.
+        /// A transient (not undoable) edit is never unexecuted, so it skips the copy.
+        /// </param>
+        public SetCurveBatchCommand(UProject project, UVoicePart part, string abbr,
+                IEnumerable<(int x, int y, int lastX, int lastY)> points, bool snapshot = true) : base(part) {
+            this.project = project;
+            this.abbr = abbr;
+            Key = abbr;
+            this.points = points.ToArray();
+            this.snapshot = snapshot;
+            if (snapshot) {
+                var curve = part.curves.FirstOrDefault(c => c.abbr == abbr);
+                oldXs = curve?.xs.ToArray();
+                oldYs = curve?.ys.ToArray();
+            }
+        }
+        public override string ToString() => "Edit Curve";
+        /// <summary>
+        /// One command notifies subscribers once where the per-sample commands notified them
+        /// thousands of times. Subscribers only invalidate the visuals they draw, and the
+        /// curve's state when they run is the same either way.
+        /// </summary>
+        public override void Execute() {
+            if (points.Length == 0) {
+                return;
+            }
+            var curve = Part.curves.FirstOrDefault(c => c.abbr == abbr);
+            if (project.expressions.TryGetValue(abbr, out var descriptor)) {
+                if (curve == null) {
+                    curve = new UCurve(descriptor);
+                    Part.curves.Add(curve);
+                }
+                foreach (var (x, y, lastX, lastY) in points) {
+                    int y1 = (int)Math.Clamp(y, descriptor.min, descriptor.max);
+                    int lastY1 = (int)Math.Clamp(lastY, descriptor.min, descriptor.max);
+                    curve.Set(x, y1, lastX, lastY1);
+                }
+            }
+        }
+        public override void Unexecute() {
+            if (!snapshot) {
+                return;
+            }
+            var curve = Part.curves.FirstOrDefault(c => c.abbr == abbr);
+            if (curve == null) {
+                return;
+            }
+            curve.xs.Clear();
+            curve.ys.Clear();
+            if (oldXs != null && oldYs != null) {
+                curve.xs.AddRange(oldXs);
+                curve.ys.AddRange(oldYs);
+            }
+        }
+        /// <summary>
+        /// Merges like the per-sample commands did, so a pass is one command in the undo
+        /// queue either way, and the <see cref="UCurve.Simplify"/> the merge path ran on
+        /// the curve it wrote is still the curve that gets saved.
+        /// </summary>
+        public override bool CanMerge(IList<UCommand> commands) {
+            return commands.All(c => c is SetCurveBatchCommand);
+        }
+        public override UCommand Merge(IList<UCommand> commands) {
+            var first = (SetCurveBatchCommand)commands.First();
+            var curve = Part.curves.FirstOrDefault(c => c.abbr == abbr);
+            curve?.Simplify();
+            int[]? newXs = curve?.xs.ToArray();
+            int[]? newYs = curve?.ys.ToArray();
+            return new MergedSetCurveCommand(
+                project, Part, abbr,
+                first.oldXs!, first.oldYs!, newXs!, newYs!);
         }
     }
 

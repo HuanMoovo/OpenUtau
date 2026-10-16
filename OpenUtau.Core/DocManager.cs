@@ -72,6 +72,18 @@ namespace OpenUtau.Core {
             Project = project;
             return previous;
         }
+
+        /// <summary>
+        /// Test seam: makes <paramref name="thread"/> the thread commands are executed on, so
+        /// <see cref="ExecuteCmd"/> runs them inline (and <see cref="EndUndoGroup"/> builds the
+        /// undo queue) instead of posting them to a UI thread that a test does not have; returns
+        /// the previous thread for restoration.
+        /// </summary>
+        internal Thread TakeMainThreadForTest(Thread thread) {
+            var previous = mainThread;
+            mainThread = thread;
+            return previous;
+        }
         public Plugin[] Plugins { get; private set; }
         public PhonemizerFactory[] PhonemizerFactories { get; private set; }
         public UProject Project { get; private set; }

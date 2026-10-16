@@ -31,8 +31,27 @@ namespace OpenUtau.Core.DiffSinger {
         public InferenceSession session;
         public Dictionary<string, string[]> phoneDict;
         public List<string> phonemes = new List<string>();
+        /// <summary>
+        /// The index of each phoneme, for token lookup. Built once: the phoneme list is a few
+        /// hundred entries long and every note and phoneme used to scan it.
+        /// </summary>
+        public Dictionary<string, int> phonemeIndexes = new Dictionary<string, int>();
         //Default rhythmizer package name
         public static string DefaultRhythmizer = "rhythmizer_zh_opencpop_strict";
+
+        /// <summary>
+        /// First index of each phoneme, so lookups match <c>List.IndexOf</c> when the list
+        /// has duplicates.
+        /// </summary>
+        public static Dictionary<string, int> IndexPhonemes(IEnumerable<string> phonemes) {
+            var indexes = new Dictionary<string, int>();
+            int index = 0;
+            foreach (var phoneme in phonemes) {
+                indexes.TryAdd(phoneme, index);
+                index++;
+            }
+            return indexes;
+        }
 
         public static Dictionary<string, string[]> LoadPhoneDict(string path, Encoding TextFileEncoding) {
             var phoneDict = new Dictionary<string, string[]>();
@@ -60,6 +79,7 @@ namespace OpenUtau.Core.DiffSinger {
             //Load phoneme set
             string phonemesPath = Path.Combine(Location, config.phonemes);
             phonemes = File.ReadLines(phonemesPath, Encoding.UTF8).ToList();
+            phonemeIndexes = IndexPhonemes(phonemes);
             session = new InferenceSession(Path.Combine(Location, config.model));
         }
     }
@@ -125,7 +145,7 @@ namespace OpenUtau.Core.DiffSinger {
 
                     if (phoneDict.ContainsKey(lyric)) {
                         notePhonemes = phoneDict[lyric];
-                    } else if (rhythmizer.phonemes.Contains(lyric)) {
+                    } else if (rhythmizer.phonemeIndexes.ContainsKey(lyric)) {
                         notePhonemes = new string[] { lyric };
                     } else {
                         notePhonemes = new string[] { "SP" };
@@ -134,17 +154,22 @@ namespace OpenUtau.Core.DiffSinger {
                 } else {
                     notePhonemes = group[0].phoneticHint.Split(" ");
                 }
-                is_slur.AddRange(Enumerable.Repeat(false, notePhonemes.Length));
+                for (int i = 0; i < notePhonemes.Length; i++) {
+                    is_slur.Add(false);
+                }
                 phAlignPoints.Add(new Tuple<int,double>(
                     phonemes.Count + (notePhonemes.Length > 1 ? 1 : 0),//TODO
                     timeAxis.TickPosToMsPos(group[0].position) / 1000
                     ));
                 phonemes.AddRange(notePhonemes);
-                midi.AddRange(Enumerable.Repeat((long)group[0].tone, notePhonemes.Length));
+                long noteTone = (long)group[0].tone;
+                float noteDur = (float)timeAxis.MsBetweenTickPos(
+                    group[0].position, group[^1].position + group[^1].duration) / 1000;
+                for (int i = 0; i < notePhonemes.Length; i++) {
+                    midi.Add(noteTone);
+                    midi_dur.Add(noteDur);
+                }
                 notePhIndex.Add(phonemes.Count);
-
-                midi_dur.AddRange(Enumerable.Repeat((float)timeAxis.MsBetweenTickPos(
-                    group[0].position, group[^1].position + group[^1].duration) / 1000, notePhonemes.Length));
             }
             var lastNote = phrase[^1][^1];
             phAlignPoints.Add(new Tuple<int, double>(
@@ -154,16 +179,18 @@ namespace OpenUtau.Core.DiffSinger {
             //Call Diffsinger phoneme timing model
             //ph_dur = session.run(['ph_dur'], {'tokens': tokens, 'midi': midi, 'midi_dur': midi_dur, 'is_slur': is_slur})[0]
             //error phonemes are replaced with SP
-            long defaultToken = rhythmizer.phonemes.IndexOf("SP");
-            var tokens = phonemes
-                .Select(x => {
-                    var idx = rhythmizer.phonemes.IndexOf(x);
-                    if (idx < 0) {
-                        Log.Warning($"Phoneme \"{x}\" not found in rhythmizer, replacing with SP");
-                    }
-                    return (long)(idx < 0 ? defaultToken : idx);
-                })
-                .ToList();
+            if (!rhythmizer.phonemeIndexes.TryGetValue("SP", out int defaultToken)) {
+                defaultToken = -1;
+            }
+            var tokens = new List<long>(phonemes.Count);
+            foreach (var phoneme in phonemes) {
+                if (rhythmizer.phonemeIndexes.TryGetValue(phoneme, out int idx)) {
+                    tokens.Add(idx);
+                } else {
+                    Log.Warning($"Phoneme \"{phoneme}\" not found in rhythmizer, replacing with SP");
+                    tokens.Add(defaultToken);
+                }
+            }
             var inputs = new List<NamedOnnxValue>();
             inputs.Add(NamedOnnxValue.CreateFromTensor("tokens",
                 new DenseTensor<long>(tokens.ToArray(), new int[] { tokens.Count }, false)

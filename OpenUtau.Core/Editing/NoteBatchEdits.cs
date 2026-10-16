@@ -501,7 +501,7 @@ namespace OpenUtau.Core.Editing {
 
             int finished = 0;
             setProgressCallback(0, phrases.Length);
-            var commands = new List<SetCurveCommand>();
+            var writes = new List<(int x, int y, int lastX, int lastY)>();
             // The model's own pitch goes into the rendered pitch masked curve too, for expression graphs to read.
             var cleared = new List<(int from, int to)>();
             var rendered = new List<(int x, float y)>();
@@ -526,7 +526,8 @@ namespace OpenUtau.Core.Editing {
                 // The result's padding (1 s for Voicevox) overlaps the neighbouring phrases; only clear the
                 // phrase's own span, so their rendered pitch is not erased.
                 ClampRanges(cleared, clearedBefore, phraseStart - phrase.leading, phraseStart + phrase.duration);
-                // TODO: Optimize interpolation and command.
+                // Every sample is one write of the batch command below; collecting them
+                // together is what keeps the pass from snapshotting the curve per sample.
                 if (cancellationToken.IsCancellationRequested) break;
                 if (prefersOverride) {
                     finished += 1;
@@ -563,8 +564,7 @@ namespace OpenUtau.Core.Editing {
                         lastX ??= x;
                         lastY ??= y;
                         if (y > minPitD) {
-                            commands.Add(new SetCurveCommand(
-                                project, part, Format.Ustx.PITD, x, y, lastX.Value, lastY.Value));
+                            writes.Add((x, y, lastX.Value, lastY.Value));
                         }
                         lastX = x;
                         lastY = y;
@@ -574,7 +574,7 @@ namespace OpenUtau.Core.Editing {
                 setProgressCallback(finished, phrases.Length);
             }
 
-            if (commands.Count == 0 && cleared.Count == 0) {
+            if (writes.Count == 0 && cleared.Count == 0) {
                 return;
             }
             var validateOptions = new ValidateOptions {
@@ -584,7 +584,14 @@ namespace OpenUtau.Core.Editing {
                 SkipPhoneme = true,
             };
             DocManager.Inst.PostOnUIThread(() => {
-                var all = new List<UCommand>(commands);
+                var all = new List<UCommand>();
+                if (writes.Count > 0) {
+                    // One command for the whole pass: it snapshots PITD once instead of once
+                    // per sample, and subscribers (which only invalidate what they draw) are
+                    // notified once instead of once per sample.
+                    all.Add(new SetCurveBatchCommand(
+                        project, part, Format.Ustx.PITD, writes, snapshot: recordUndo));
+                }
                 if (cleared.Count > 0 && project.expressions.ContainsKey(Format.Ustx.RPIT)) {
                     var curve = part.maskedCurves.FirstOrDefault(c => c.abbr == Format.Ustx.RPIT)?.Clone()
                         ?? new UMaskedCurve(Format.Ustx.RPIT);

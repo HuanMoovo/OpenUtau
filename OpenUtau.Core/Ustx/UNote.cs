@@ -204,9 +204,12 @@ namespace OpenUtau.Core.Ustx {
             if (phonemeIndexes != null && phonemeIndexes.Length > 0) {
                 int indexes = phonemeIndexes.LastOrDefault() + 1;
                 UExpression? phonemeExp = null;
+                // One set for the whole call: this runs for every selected note, and the
+                // array scan per index was the bulk of it.
+                var phonemeIndexSet = new HashSet<int>(phonemeIndexes);
 
                 for (int i = 0; i < indexes; i++) {
-                    if (phonemeIndexes.Contains(i)) {
+                    if (phonemeIndexSet.Contains(i)) {
                         phonemeExp = phonemeExpressions.FirstOrDefault(exp => exp.descriptor?.abbr == abbr && exp.index == i);
                     }
                     if (phonemeExp != null) {
@@ -230,13 +233,17 @@ namespace OpenUtau.Core.Ustx {
             phonemeExpressions.RemoveAll(exp => exp.descriptor?.abbr == abbr);
 
             int indexes = phonemeIndexes.LastOrDefault() + 1;
+            // One set and one last-value for the whole call; this runs for every selected
+            // note of a drag, where the per-index scans dominated.
+            var phonemeIndexSet = new HashSet<int>(phonemeIndexes);
+            float? lastValue = values[^1];
             for (int i = 0; i < indexes; i++) {
-                if (i == 0 || phonemeIndexes.Contains(i)) {
+                if (i == 0 || phonemeIndexSet.Contains(i)) {
                     float? value;
                     if (values.Length > i) {
                         value = values[i];
                     } else {
-                        value = values.Last();
+                        value = lastValue;
                     }
                     if (value == null) {
                         continue;
