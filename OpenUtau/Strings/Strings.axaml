@@ -373,6 +373,24 @@ Do you want to continue by splitting at the nearest position after current playh
   <system:String x:Key="exps.type.numerical">Numerical</system:String>
   <system:String x:Key="exps.type.options">Options</system:String>
 
+  <system:String x:Key="hint.action.boxselect">Box Select</system:String>
+  <system:String x:Key="hint.action.drawnote">Create a note of any length</system:String>
+  <system:String x:Key="hint.action.editlyrics">Edit lyrics</system:String>
+  <system:String x:Key="hint.action.hscroll">Scroll horizontally</system:String>
+  <system:String x:Key="hint.action.hzoom">Zoom horizontally</system:String>
+  <system:String x:Key="hint.action.openroll">Open the piano roll</system:String>
+  <system:String x:Key="hint.action.selectparts">Box select parts</system:String>
+  <system:String x:Key="hint.action.trackheight">Change track height</system:String>
+  <system:String x:Key="hint.action.vzoom">Zoom vertically</system:String>
+  <system:String x:Key="hint.gesture.altwheel">Alt+Wheel</system:String>
+  <system:String x:Key="hint.gesture.ctrlwheel">Ctrl+Wheel</system:String>
+  <system:String x:Key="hint.gesture.ctrldrag">Ctrl+Drag</system:String>
+  <system:String x:Key="hint.gesture.dblnote">Double-click a note</system:String>
+  <system:String x:Key="hint.gesture.dblpart">Double-click a part</system:String>
+  <system:String x:Key="hint.gesture.drag">Drag</system:String>
+  <system:String x:Key="hint.gesture.pendrag">Pen drag</system:String>
+  <system:String x:Key="hint.gesture.shiftwheel">Shift+Wheel</system:String>
+
   <system:String x:Key="languages.de">German</system:String>
   <system:String x:Key="languages.en">English</system:String>
   <system:String x:Key="languages.es">Spanish</system:String>
@@ -591,6 +609,10 @@ Warning: this option removes custom presets.</system:String>
   <system:String x:Key="packages.update">Update</system:String>
 
   <system:String x:Key="phoneme.show.error">Alt + Click to view the full error</system:String>
+
+  <system:String x:Key="panel.arrangement">Arrangement</system:String>
+  <system:String x:Key="panel.pianoroll">Piano Roll</system:String>
+  <system:String x:Key="panel.voice">Voice</system:String>
 
   <system:String x:Key="phoneticassistant.caption">Phonetic Assistant</system:String>
   <system:String x:Key="phoneticassistant.copy">Copy</system:String>
@@ -857,6 +879,10 @@ Warning: this option removes custom presets.</system:String>
   <system:String x:Key="progress.saved">Project saved. {0}</system:String>
   <system:String x:Key="progress.waitingrendering">Waiting Rendering</system:String>
 
+  <system:String x:Key="section.mix">Mix</system:String>
+  <system:String x:Key="section.pronunciation">Pronunciation</system:String>
+  <system:String x:Key="section.singer">Singer</system:String>
+
   <system:String x:Key="singererror.aliasfullwidthspaces">Alias contains full-width spaces.</system:String>
   <system:String x:Key="singererror.aliasisnfd">Alias is NFD.</system:String>
   <system:String x:Key="singererror.aliasmultiplespaces">Alias contains multiple spaces.</system:String>
@@ -997,6 +1023,7 @@ General
   <system:String x:Key="tip.notes.zoomy">Scroll here to zoom vertically ▶</system:String>
   <system:String x:Key="tip.playback.loop">Loop playback</system:String>
 
+  <system:String x:Key="tracks.add">Add Track</system:String>
   <system:String x:Key="tracks.duplicate">Duplicate Track</system:String>
   <system:String x:Key="tracks.duplicatesettings">Duplicate Track Settings</system:String>
   <system:String x:Key="tracks.favorite">Favorites</system:String>

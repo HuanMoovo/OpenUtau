@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Controls;
 using Avalonia.Input;
 using Avalonia.Threading;
 using DynamicData.Binding;
@@ -110,6 +111,115 @@ namespace OpenUtau.App.ViewModels {
         [Reactive] public partial bool ShowPianoRoll { get; set; }
         [Reactive] public partial double PianoRollMaxHeight { get; set; }
         [Reactive] public partial double PianoRollMinHeight { get; set; }
+
+        /// <summary>
+        /// The right hand voice column, toggled by the far right icon strip. Kept in the preferences
+        /// so the workspace comes back the way it was left, like the rest of the panel state.
+        /// </summary>
+        public bool ShowInspector {
+            get => Preferences.Default.ShowInspector;
+            set {
+                if (Preferences.Default.ShowInspector == value) {
+                    return;
+                }
+                Preferences.Default.ShowInspector = value;
+                Preferences.Save();
+                this.RaisePropertyChanged(nameof(ShowInspector));
+                this.RaisePropertyChanged(nameof(InspectorColumnWidth));
+            }
+        }
+
+        public GridLength InspectorColumnWidth => ShowInspector ? new GridLength(216) : new GridLength(0);
+
+        /// <summary>
+        /// The note properties pane of the piano roll (its right column). With a roll open this is
+        /// the roll's own state, which persists through the preference itself; without one it is the
+        /// preference the next roll will read.
+        /// </summary>
+        public bool ShowNoteParams {
+            get => rollNotes?.ShowNoteParams ?? Preferences.Default.ShowNoteParams;
+            set {
+                if (value == ShowNoteParams) {
+                    return;
+                }
+                if (rollNotes != null) {
+                    rollNotes.ShowNoteParams = value;
+                } else {
+                    Preferences.Default.ShowNoteParams = value;
+                    Preferences.Save();
+                }
+                this.RaisePropertyChanged(nameof(ShowNoteParams));
+            }
+        }
+
+        public NotesViewModel? RollNotes => rollNotes;
+        public bool HasRollNotes => rollNotes != null;
+
+        /// <summary>
+        /// The piano roll's snap state, proxied for the toolbar so the toolbar never binds through a
+        /// null roll. With no roll the toggle is hidden anyway.
+        /// </summary>
+        public bool SnapOn {
+            get => rollNotes?.IsSnapOn ?? true;
+            set {
+                if (rollNotes == null || rollNotes.IsSnapOn == value) {
+                    return;
+                }
+                rollNotes.IsSnapOn = value;
+                this.RaisePropertyChanged(nameof(SnapOn));
+            }
+        }
+
+        public string SnapDivText => rollNotes?.SnapDivText ?? string.Empty;
+
+        /// <summary>The roll's snap divisions, read when the toolbar's menu opens.</summary>
+        public IReadOnlyList<MenuItemViewModel> SnapDivs =>
+            rollNotes?.SnapDivs ?? (IReadOnlyList<MenuItemViewModel>)Array.Empty<MenuItemViewModel>();
+
+        /// <summary>
+        /// The mouse hints of the surface that is on screen: the piano roll's while its pane is open,
+        /// the arrangement's otherwise. Read from the same tables the input handlers act on.
+        /// </summary>
+        public IReadOnlyList<MouseHint> Hints =>
+            ShowPianoRoll ? MouseHints.Inst.PianoRoll : MouseHints.Inst.Arrangement;
+
+        /// <summary>Caption of the hint strip, naming the surface the hints belong to.</summary>
+        public string HintsCaption => ThemeManager.GetString(ShowPianoRoll ? "panel.pianoroll" : "panel.arrangement");
+
+        private NotesViewModel? rollNotes;
+        private IDisposable? rollNotesSub;
+
+        /// <summary>
+        /// Called by the window when it builds the piano roll, so the toolbar's snap controls and the
+        /// icon strip drive the same view model the roll itself uses.
+        /// </summary>
+        public void SetRollNotes(NotesViewModel? notesViewModel) {
+            if (ReferenceEquals(rollNotes, notesViewModel)) {
+                return;
+            }
+            rollNotesSub?.Dispose();
+            rollNotesSub = null;
+            rollNotes = notesViewModel;
+            if (notesViewModel != null) {
+                // The roll's own controls and the toolbar's stay one set of controls.
+                rollNotesSub = notesViewModel.WhenAnyValue(
+                        x => x.ShowNoteParams, x => x.IsSnapOn, x => x.SnapDivText)
+                    .Subscribe(_ => {
+                        this.RaisePropertyChanged(nameof(ShowNoteParams));
+                        this.RaisePropertyChanged(nameof(SnapOn));
+                        this.RaisePropertyChanged(nameof(SnapDivText));
+                    });
+            }
+            this.RaisePropertyChanged(nameof(RollNotes));
+            this.RaisePropertyChanged(nameof(HasRollNotes));
+            this.RaisePropertyChanged(nameof(ShowNoteParams));
+            this.RaisePropertyChanged(nameof(SnapOn));
+            this.RaisePropertyChanged(nameof(SnapDivText));
+            this.RaisePropertyChanged(nameof(SnapDivs));
+            this.RaisePropertyChanged(nameof(Hints));
+            this.RaisePropertyChanged(nameof(HintsCaption));
+        }
+
         public ReactiveCommand<UPart, RxVoid> PartDeleteCommand { get; set; }
         public ReactiveCommand<int, RxVoid>? AddTempoChangeCmd { get; set; }
         public ReactiveCommand<int, RxVoid>? DelTempoChangeCmd { get; set; }
@@ -169,6 +279,9 @@ namespace OpenUtau.App.ViewModels {
                 .Subscribe(x => {
                     PianoRollMaxHeight = x ? double.PositiveInfinity : 0.01;
                     PianoRollMinHeight = x ? ViewConstants.PianoRollMinHeight : 0.01;
+                    // The hint strip follows the surface the pointer is on.
+                    this.RaisePropertyChanged(nameof(Hints));
+                    this.RaisePropertyChanged(nameof(HintsCaption));
                 });
         }
 

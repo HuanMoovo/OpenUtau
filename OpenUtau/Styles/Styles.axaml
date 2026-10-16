@@ -307,38 +307,161 @@
     <Setter Property="Foreground" Value="{DynamicResource AccentBrush1}"/>
   </Style>
 
-  <Style Selector="Border.playback">
+  <!--Editor chrome, Synthesizer V Studio 2 style: one flat toolbar row, panels with slim caption
+       bars, tiny section headings, 1px separators and an icon strip that shows and hides panels.
+       The accent stays reserved for selection, focus and the playhead. -->
+  <Style Selector="Border.toolstrip">
+    <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltMediumLowBrush}"/>
+    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource MenuFlyoutPresenterBorderBrush}"/>
+  </Style>
+  <!--1px vertical separator between the toolbar's groups.-->
+  <Style Selector="Border.toolsep">
+    <Setter Property="Width" Value="1"/>
+    <Setter Property="Margin" Value="6,5"/>
+    <Setter Property="Background" Value="{DynamicResource MenuFlyoutPresenterBorderBrush}"/>
+  </Style>
+  <Style Selector="Button.transport">
+    <Setter Property="Margin" Value="0"/>
+    <Setter Property="Padding" Value="0"/>
+    <Setter Property="Width" Value="24"/>
+    <Setter Property="Height" Value="22"/>
+    <Setter Property="CornerRadius" Value="3"/>
+    <Setter Property="Background" Value="Transparent"/>
+  </Style>
+  <Style Selector="Button.transport /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="Transparent"/>
+  </Style>
+  <Style Selector="Button.transport:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NeutralAccentBrushSemi}"/>
+  </Style>
+  <Style Selector="Button.transport:pressed /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource NeutralAccentBrush}"/>
+  </Style>
+  <!--Tempo, time signature and position fields: a quiet filled box with a hairline. -->
+  <Style Selector="Border.readout">
     <Setter Property="CornerRadius" Value="4"/>
     <Setter Property="BorderThickness" Value="1"/>
     <Setter Property="BorderBrush" Value="{DynamicResource NeutralAccentBrushSemi}"/>
+    <Setter Property="Background" Value="{DynamicResource SystemRegionBrush}"/>
     <Setter Property="Height" Value="20"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
   </Style>
-  <Style Selector="Border.playback TextBlock">
+  <Style Selector="Border.readout TextBlock">
     <Setter Property="Padding" Value="6,0,0,1"/>
     <Setter Property="FontSize" Value="11"/>
     <Setter Property="FontFamily" Value="Monospace"/>
     <Setter Property="VerticalAlignment" Value="Center"/>
     <Setter Property="HorizontalAlignment" Value="Center"/>
   </Style>
-  <Style Selector="Border.playback StackPanel">
-    <Setter Property="VerticalAlignment" Value="Center"/>
-    <Setter Property="HorizontalAlignment" Value="Center"/>
+  <!--Slim caption bar of a panel: the caption, its own controls, and a 1px rule under it. -->
+  <Style Selector="Border.panelHeader">
+    <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltMediumLowBrush}"/>
+    <Setter Property="BorderThickness" Value="0,0,0,1"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource MenuFlyoutPresenterBorderBrush}"/>
+    <Setter Property="Height" Value="24"/>
   </Style>
-  <Style Selector="Border.playback Button, Border.playback ToggleButton">
+  <Style Selector="TextBlock.panelCaption">
+    <Setter Property="FontSize" Value="11"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Foreground" Value="{DynamicResource ForegroundBrushSecondary}"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+    <Setter Property="Padding" Value="8,0,0,0"/>
+  </Style>
+  <Style Selector="Button.panelHeaderButton">
+    <Setter Property="Margin" Value="0,0,4,0"/>
+    <Setter Property="Padding" Value="0"/>
+    <Setter Property="Width" Value="18"/>
+    <Setter Property="Height" Value="18"/>
+    <Setter Property="CornerRadius" Value="3"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Style Selector="^ Path.filled">
+      <Setter Property="Fill" Value="{DynamicResource NeutralAccentBrushSemi}"/>
+    </Style>
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource NeutralAccentBrushSemi}"/>
+    </Style>
+    <Style Selector="^:pointerover Path.filled">
+      <Setter Property="Fill" Value="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+    </Style>
+  </Style>
+  <!--Tiny group heading inside a properties panel. -->
+  <Style Selector="TextBlock.sectionHeading">
+    <Setter Property="FontSize" Value="10"/>
+    <Setter Property="FontWeight" Value="SemiBold"/>
+    <Setter Property="Foreground" Value="{DynamicResource ForegroundBrushSecondary}"/>
+    <Setter Property="Padding" Value="4,2,0,1"/>
+  </Style>
+  <!--The far right icon strip: square buttons that show and hide the workspace's panels. -->
+  <Style Selector="Border.iconStrip">
+    <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltMediumLowBrush}"/>
+    <Setter Property="BorderThickness" Value="1,0,0,0"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource MenuFlyoutPresenterBorderBrush}"/>
+  </Style>
+  <Style Selector="ToggleButton.iconStrip">
     <Setter Property="Margin" Value="0"/>
     <Setter Property="Padding" Value="0"/>
-    <Setter Property="Width" Value="21"/>
-    <Setter Property="Height" Value="19"/>
+    <Setter Property="Width" Value="40"/>
+    <Setter Property="Height" Value="40"/>
+    <Setter Property="CornerRadius" Value="6"/>
+    <Setter Property="Background" Value="Transparent"/>
+    <Setter Property="HorizontalContentAlignment" Value="Center"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Style Selector="^ /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="Transparent"/>
+    </Style>
+    <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource NeutralAccentBrushSemi}"/>
+    </Style>
+    <Style Selector="^:checked /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AccentBrush1Semi}"/>
+    </Style>
+    <Style Selector="^:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource AccentBrush1}"/>
+    </Style>
+    <Style Selector="^ Path.filled">
+      <Setter Property="Fill" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+    </Style>
+    <Style Selector="^:checked Path.filled">
+      <Setter Property="Fill" Value="{DynamicResource SystemControlForegroundBaseHighBrushPointerOver}"/>
+    </Style>
+  </Style>
+  <!--Bottom hint strip: the mouse gestures of the surface above it, highlighted while active. -->
+  <Style Selector="Border.hintBar">
+    <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltMediumLowBrush}"/>
+    <Setter Property="BorderThickness" Value="0,1,0,0"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource MenuFlyoutPresenterBorderBrush}"/>
+    <Setter Property="MinHeight" Value="22"/>
+  </Style>
+  <Style Selector="Border.hintChip">
+    <Setter Property="CornerRadius" Value="3"/>
+    <Setter Property="Padding" Value="6,1"/>
+    <Setter Property="Margin" Value="2,2"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="BorderBrush" Value="Transparent"/>
     <Setter Property="Background" Value="Transparent"/>
   </Style>
-  <Style Selector="Border.playback ToggleButton:checked /template/ ContentPresenter#PART_ContentPresenter">
+  <Style Selector="Border.hintChip.active">
     <Setter Property="Background" Value="{DynamicResource AccentBrush1Semi}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush1}"/>
   </Style>
-  <Style Selector="Border.playback ToggleButton:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource AccentBrush1}"/>
+  <Style Selector="Border.hintChip TextBlock.hintGesture">
+    <Setter Property="FontSize" Value="11"/>
+    <Setter Property="FontFamily" Value="Monospace"/>
+    <Setter Property="Foreground" Value="{DynamicResource ForegroundBrushSecondary}"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
   </Style>
-  <Style Selector="Border.playback ToggleButton:checked /template/ Path">
-    <Setter Property="Fill" Value="{DynamicResource SystemControlForegroundBaseHighBrushPointerOver}"/>
+  <Style Selector="Border.hintChip TextBlock.hintText">
+    <Setter Property="FontSize" Value="11"/>
+    <Setter Property="Margin" Value="5,0,0,0"/>
+    <Setter Property="Foreground" Value="{DynamicResource ForegroundBrushSecondary}"/>
+    <Setter Property="VerticalAlignment" Value="Center"/>
+  </Style>
+  <Style Selector="Border.hintChip.active TextBlock">
+    <Setter Property="Foreground" Value="{DynamicResource SystemControlForegroundBaseHighBrushPointerOver}"/>
   </Style>
 
   <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">

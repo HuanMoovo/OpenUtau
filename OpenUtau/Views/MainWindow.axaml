@@ -261,8 +261,20 @@
         </Grid>
       
         <!--Main page-->
-        <Grid ColumnDefinitions="240,*,24,216" Grid.Row="0" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" KeyDown="OnCarouselPageKeyDown">
+        <!--The editor, laid out like Synthesizer V Studio 2: one compact toolbar row under the menu
+            bar (transport, tempo, time signature, position, snap, status), the arrangement with its
+            own slim title bar, the piano roll under it, the voice panel on the right and the icon
+            strip that shows and hides those panels on the far right. -->
+        <Grid Name="EditorGrid" Grid.Row="0" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" KeyDown="OnCarouselPageKeyDown">
+          <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="240"/>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="24"/>
+            <ColumnDefinition Width="216"/>
+            <ColumnDefinition Width="48"/>
+          </Grid.ColumnDefinitions>
           <Grid.RowDefinitions>
+            <RowDefinition Height="24"/>
             <RowDefinition Height="24"/>
             <RowDefinition Height="24"/>
             <RowDefinition Height="*" MinHeight="0.01"/>
@@ -270,67 +282,9 @@
             <RowDefinition Height="3*"
                            MinHeight="{Binding PianoRollMinHeight}"
                            MaxHeight="{Binding PianoRollMaxHeight}"/>
-            <RowDefinition Height="20"/>
+            <RowDefinition Height="Auto"/>
             <RowDefinition Height="4"/>
           </Grid.RowDefinitions>
-          <Panel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" HorizontalAlignment="Stretch" VerticalAlignment="Top" Height="24">
-            <Border Classes="playback" Width="72" HorizontalAlignment="Left" Margin="4,0">
-              <Grid>
-                <TextBlock Width="28" HorizontalAlignment="Left"
-                          Background="Transparent" PointerPressed="OnEditTimeSignature">
-                  <TextBlock.Text>
-                    <MultiBinding StringFormat="{}{0}/{1}">
-                      <Binding Path="PlaybackViewModel.BeatPerBar"/>
-                      <Binding Path="PlaybackViewModel.BeatUnit"/>
-                    </MultiBinding>
-                  </TextBlock.Text>
-                </TextBlock>
-                <TextBlock Width="42" HorizontalAlignment="Right"
-                            Background="Transparent" PointerPressed="OnEditBpm" PointerWheelChanged="OnEditBpmScroll">
-                  <TextBlock.Text>
-                    <MultiBinding StringFormat="{}{0:#0.00}">
-                      <Binding Path="PlaybackViewModel.Bpm"/>
-                    </MultiBinding>
-                  </TextBlock.Text>
-                </TextBlock>
-              </Grid>
-            </Border>
-            <Border Classes="playback" HorizontalAlignment="Center">
-              <StackPanel Orientation="Horizontal">
-                <Button Command="{Binding PlaybackViewModel.SeekStart}" Height="18">
-                  <Path Fill="{Binding $parent[Window].Foreground}" VerticalAlignment="Center" HorizontalAlignment="Center" Height="18" Width="18"
-                        Data="M5.35 4.3H7.44V13.7H5.35ZM7.44 9L12.65 4.3V13.7Z"/>
-                </Button>
-                <Button Click="OnPlayOrPause" Height="18">
-                  <Path Fill="{Binding $parent[Window].Foreground}" VerticalAlignment="Center" HorizontalAlignment="Center" Height="18" Width="18"
-                        Data="M5.35 4.3L12.65 9.01L5.35 13.7Z"/>
-                </Button>
-                <Button Command="{Binding PlaybackViewModel.Pause}" Height="18">
-                  <Path Fill="{Binding $parent[Window].Foreground}" VerticalAlignment="Center" HorizontalAlignment="Center" Height="18" Width="18"
-                        Data="M5.35 4.3H7.78V13.7H5.35ZM10.22 4.3H12.65V13.7H10.22Z"/>
-                </Button>
-                <Button Command="{Binding PlaybackViewModel.SeekEnd}" Height="18">
-                  <Path Fill="{Binding $parent[Window].Foreground}" VerticalAlignment="Center" HorizontalAlignment="Center" Height="18" Width="18"
-                        Data="M5.35 4.3L10.56 9L5.35 13.7ZM10.56 4.3H12.65V13.7H10.56Z"/>
-                </Button>
-                <ToggleButton IsChecked="{Binding PlaybackViewModel.LoopPlayback}"
-                              ToolTip.Tip="{DynamicResource tip.playback.loop}" Height="18">
-                  <Path Fill="{Binding $parent[Window].Foreground}" VerticalAlignment="Center" HorizontalAlignment="Center" Height="18" Width="18"
-                        Data="M5.19 4.86H11.11V2.8l2.53 3.09-2.53 3.1V6.93H6.05V8.99H4.35V6.93c0-1.14.34-2.07.84-2.07ZM12.81 13.13H6.88v2.07L4.35 12.1l2.53-3.1V11.06h5.08V8.99H13.65v2.07c0 1.14-.34 2.07-.84 2.07Z"/>
-                </ToggleButton>
-                <ToggleButton IsChecked="{Binding PlaybackViewModel.Metronome}" Height="18"
-                              ToolTip.Tip="{DynamicResource prefs.playback.metronome}">
-                  <Path Fill="{Binding $parent[Window].Foreground}" VerticalAlignment="Center" HorizontalAlignment="Center" Height="18" Width="18"
-                        Data="M7.93 4.3a.43.34 0 0 0-.41.25L4.33 13.25a.43.34 0 0 0 .41.45h8.5a.43.34 0 0 0 .41-.45L12.32 9.65l-1.89 1.36c-.09.56-.7 1.02-1.42 1.02-.78 0-1.44-.54-1.44-1.18 0-.64.66-1.18 1.44-1.18.01 0 .02 0 .03 0l2.61-1.85-1.2-3.27a.43.34 0 0 0-.41-.25ZM14.65 6.13a.8.66 0 0 0-.48.16L9.13 9.92a1.17.95 0 0 0-1.17.95 1.17.95 0 0 0 1.17.95 1.17.95 0 0 0 1.16-.9l5.06-3.65a.8.66 0 0 0 .07-.92.8.66 0 0 0-.66-.22Z"/>
-                </ToggleButton>
-              </StackPanel>
-            </Border>
-            <Border Classes="playback" Width="72" HorizontalAlignment="Right" Margin="4,0">
-              <Grid>
-                <TextBlock Text="{Binding Path=PlaybackViewModel.PlayPosTime, StringFormat={}{0:mm\\:ss\\.fff}}"/>
-              </Grid>
-            </Border>
-          </Panel>
           <ScrollBar Name="HScrollBar" Classes="music" Grid.Row="0" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                     Margin="0,4,0,4" Orientation="Horizontal" AllowAutoHide="False"
                     DataContext="{Binding TracksViewModel}"
@@ -339,15 +293,102 @@
                     ViewportSize="{Binding ViewportTicks}"
                     LargeChange="{Binding ViewportTicks}"
                     SmallChange="{Binding SmallChangeX}" PointerWheelChanged="HScrollPointerWheelChanged"/>
-          <ScrollBar Name="VScrollBar" Classes="music" Grid.Row="2" Grid.Column="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
-                    Margin="4,0,4,0" Orientation="Vertical" AllowAutoHide="False"
-                    DataContext="{Binding TracksViewModel}"
-                    Maximum="{Binding VScrollBarMax, Mode=OneWay}"
-                    Value="{Binding TrackOffset}"
-                    ViewportSize="{Binding ViewportTracks}"
-                    LargeChange="{Binding ViewportTracks}"
-                    SmallChange="{Binding SmallChangeY}" PointerWheelChanged="VScrollPointerWheelChanged"/>
-          <Canvas Name="TimelineCanvas" Grid.Row="1" Grid.Column="1"
+          <!--One toolbar: play controls, time signature, tempo, position, status and the piano roll's
+              snap, all in a single row, flat, no boxes around them. -->
+          <Border Name="EditorToolbar" Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="3" Classes="toolstrip">
+            <Grid ColumnDefinitions="Auto,Auto,Auto,Auto,*,Auto,Auto,Auto">
+              <StackPanel Grid.Column="0" Orientation="Horizontal" Spacing="1" VerticalAlignment="Center" Margin="4,0,0,0">
+                <Button Name="SeekStartButton" Classes="transport" Command="{Binding PlaybackViewModel.SeekStart}">
+                  <Path Fill="{Binding $parent[Window].Foreground}" VerticalAlignment="Center" HorizontalAlignment="Center" Height="18" Width="18"
+                        Data="M5.35 4.3H7.44V13.7H5.35ZM7.44 9L12.65 4.3V13.7Z"/>
+                </Button>
+                <Button Name="PlayPauseButton" Classes="transport" Click="OnPlayOrPause">
+                  <Path Fill="{Binding $parent[Window].Foreground}" VerticalAlignment="Center" HorizontalAlignment="Center" Height="18" Width="18"
+                        Data="M5.35 4.3L12.65 9.01L5.35 13.7Z"/>
+                </Button>
+                <Button Name="PauseButton" Classes="transport" Command="{Binding PlaybackViewModel.Pause}">
+                  <Path Fill="{Binding $parent[Window].Foreground}" VerticalAlignment="Center" HorizontalAlignment="Center" Height="18" Width="18"
+                        Data="M5.35 4.3H7.78V13.7H5.35ZM10.22 4.3H12.65V13.7H10.22Z"/>
+                </Button>
+                <Button Name="SeekEndButton" Classes="transport" Command="{Binding PlaybackViewModel.SeekEnd}">
+                  <Path Fill="{Binding $parent[Window].Foreground}" VerticalAlignment="Center" HorizontalAlignment="Center" Height="18" Width="18"
+                        Data="M5.35 4.3L10.56 9L5.35 13.7ZM10.56 4.3H12.65V13.7H10.56Z"/>
+                </Button>
+                <ToggleButton Name="LoopButton" Classes="toolbar" Height="20" Width="20" Margin="1,0" IsChecked="{Binding PlaybackViewModel.LoopPlayback}"
+                              ToolTip.Tip="{DynamicResource tip.playback.loop}">
+                  <Path Fill="{Binding $parent[Window].Foreground}" VerticalAlignment="Center" HorizontalAlignment="Center" Height="18" Width="18"
+                        Data="M5.19 4.86H11.11V2.8l2.53 3.09-2.53 3.1V6.93H6.05V8.99H4.35V6.93c0-1.14.34-2.07.84-2.07ZM12.81 13.13H6.88v2.07L4.35 12.1l2.53-3.1V11.06h5.08V8.99H13.65v2.07c0 1.14-.34 2.07-.84 2.07Z"/>
+                </ToggleButton>
+                <ToggleButton Name="MetronomeButton" Classes="toolbar" Height="20" Width="20" Margin="1,0" IsChecked="{Binding PlaybackViewModel.Metronome}"
+                              ToolTip.Tip="{DynamicResource prefs.playback.metronome}">
+                  <Path Fill="{Binding $parent[Window].Foreground}" VerticalAlignment="Center" HorizontalAlignment="Center" Height="18" Width="18"
+                        Data="M7.93 4.3a.43.34 0 0 0-.41.25L4.33 13.25a.43.34 0 0 0 .41.45h8.5a.43.34 0 0 0 .41-.45L12.32 9.65l-1.89 1.36c-.09.56-.7 1.02-1.42 1.02-.78 0-1.44-.54-1.44-1.18 0-.64.66-1.18 1.44-1.18.01 0 .02 0 .03 0l2.61-1.85-1.2-3.27a.43.34 0 0 0-.41-.25ZM14.65 6.13a.8.66 0 0 0-.48.16L9.13 9.92a1.17.95 0 0 0-1.17.95 1.17.95 0 0 0 1.17.95 1.17.95 0 0 0 1.16-.9l5.06-3.65a.8.66 0 0 0 .07-.92.8.66 0 0 0-.66-.22Z"/>
+                </ToggleButton>
+              </StackPanel>
+              <Border Grid.Column="1" Classes="toolsep"/>
+              <Border Grid.Column="2" Classes="readout" Margin="2,0,0,0">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Width="28" HorizontalAlignment="Left"
+                              Background="Transparent" PointerPressed="OnEditTimeSignature">
+                    <TextBlock.Text>
+                      <MultiBinding StringFormat="{}{0}/{1}">
+                        <Binding Path="PlaybackViewModel.BeatPerBar"/>
+                        <Binding Path="PlaybackViewModel.BeatUnit"/>
+                      </MultiBinding>
+                    </TextBlock.Text>
+                  </TextBlock>
+                  <TextBlock Width="42" HorizontalAlignment="Right"
+                              Background="Transparent" PointerPressed="OnEditBpm" PointerWheelChanged="OnEditBpmScroll">
+                    <TextBlock.Text>
+                      <MultiBinding StringFormat="{}{0:#0.00}">
+                        <Binding Path="PlaybackViewModel.Bpm"/>
+                      </MultiBinding>
+                    </TextBlock.Text>
+                  </TextBlock>
+                </StackPanel>
+              </Border>
+              <Border Grid.Column="3" Classes="readout" Margin="6,0,0,0">
+                <TextBlock Text="{Binding Path=PlaybackViewModel.PlayPosTime, StringFormat={}{0:mm\\:ss\\.fff}}"/>
+              </Border>
+              <!--Status of the long running jobs, where Synthesizer V prints its own messages. -->
+              <TextBlock Grid.Column="4" Margin="10,0,10,0" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                         Foreground="{DynamicResource ForegroundBrushSecondary}"
+                         Text="{Binding ProgressText}"
+                         IsVisible="{Binding ProgressText, Converter={x:Static StringConverters.IsNotNullOrEmpty}}"/>
+              <!--The piano roll's snap, reachable from the editor toolbar as well; it drives the roll's
+                  own view model and disappears while there is no roll. -->
+              <Border Grid.Column="5" Classes="toolsep" IsVisible="{Binding HasRollNotes}"/>
+              <StackPanel Grid.Column="6" Orientation="Horizontal" Spacing="2" VerticalAlignment="Center" Margin="4,0" IsVisible="{Binding HasRollNotes}">
+                <ToggleButton Name="ToolbarSnapToggle" Classes="toolbar" Height="20" Width="20" Margin="0"
+                              IsChecked="{Binding SnapOn}" ToolTip.Tip="{DynamicResource pianoroll.toggle.snap}">
+                  <Border Width="18" Height="18">
+                    <Path Classes="stroked" Data="M 4.5 13.5 L 7.5 13.5 L 7.5 9.5 A 1,1 0 1 1 10.5,9.5 L 10.5 13.5 L 13.5 13.5 L 13.5 8.5 A 1,1 0 1 0 4.5,8.5 Z"/>
+                  </Border>
+                </ToggleButton>
+                <Button Name="ToolbarSnapDivButton" Margin="0" Padding="0,1" Height="20" Width="40" Background="Transparent"
+                        Click="OnToolbarSnapDivMenuButton" ToolTip.Tip="{DynamicResource pianoroll.snapdiv}">
+                  <TextBlock Text="{Binding SnapDivText}"
+                             TextAlignment="Right" FontSize="10" FontFamily="monospace"
+                             Foreground="{DynamicResource SystemControlForegroundBaseHighBrush}"/>
+                  <Button.ContextMenu>
+                    <ContextMenu Name="ToolbarSnapDivMenu" Classes="WithCommand" Placement="BottomEdgeAlignedLeft"
+                                 KeyDown="OnToolbarSnapDivKeyDown"/>
+                  </Button.ContextMenu>
+                </Button>
+              </StackPanel>
+            </Grid>
+          </Border>
+          <!--Arrangement title bar, with the timeline ruler and the track height scaler next to it. -->
+          <Border Grid.Row="2" Grid.Column="0" Name="ArrangementHeader" Classes="panelHeader">
+            <Grid ColumnDefinitions="*,Auto">
+              <TextBlock Grid.Column="0" Classes="panelCaption" Text="{DynamicResource panel.arrangement}"/>
+              <Button Grid.Column="1" Name="AddTrackButton" Classes="panelHeaderButton" Click="OnAddTrackButton"
+                      ToolTip.Tip="{DynamicResource tracks.add}">
+                <Path Classes="filled" Width="12" Height="12" Data="M10.61,13.43H2.28V10.57H10.61V2H13.39V10.57H21.72V13.43H13.39V22H10.61Z"/>
+              </Button>
+            </Grid>
+          </Border>
+          <Canvas Name="TimelineCanvas" Grid.Row="2" Grid.Column="1"
                   Background="Transparent" ClipToBounds="True"
                   PointerWheelChanged="TimelinePointerWheelChanged"
                   PointerPressed="TimelinePointerPressed"
@@ -378,20 +419,20 @@
               </ContextMenu>
             </Canvas.ContextMenu>
           </Canvas>
-          <c:TrackHeaderCanvas Name="HeaderCanvas" Grid.Row="2" Grid.Column="0" ClipToBounds="True" Background="Transparent"
+          <c:TrackHeaderCanvas Name="HeaderCanvas" Grid.Row="3" Grid.Column="0" ClipToBounds="True" Background="Transparent"
                               DataContext="{Binding TracksViewModel}"
                               TrackHeight="{Binding TrackHeight}"
                               TrackOffset="{Binding TrackOffset}"
                               Items="{Binding Tracks}"
                               PointerWheelChanged="MainPagePointerWheelChanged"
                               Cursor="Arrow"/>
-          <c:TrackBackground Grid.Row="2" Grid.Column="1" Margin="0" IsHitTestVisible="False"
+          <c:TrackBackground Grid.Row="3" Grid.Column="1" Margin="0" IsHitTestVisible="False"
                             Foreground="{DynamicResource TrackBackgroundAltBrush}"
                             DataContext="{Binding TracksViewModel}"
                             Bounds="{Binding Bounds, Mode=OneWayToSource}"
                             TrackHeight="{Binding TrackHeight}"
                             TrackOffset="{Binding TrackOffset}"/>
-          <c:TickBackground Grid.Row="1" Grid.RowSpan="2" Grid.Column="1" Margin="0" IsHitTestVisible="False"
+          <c:TickBackground Grid.Row="2" Grid.RowSpan="2" Grid.Column="1" Margin="0" IsHitTestVisible="False"
                             Foreground="{DynamicResource TickLineBrush}"
                             Background="{DynamicResource TickLineBrushLow}"
                             Resolution="{Binding PlaybackViewModel.Resolution}"
@@ -400,7 +441,7 @@
                             SnapDiv="{Binding TracksViewModel.SnapDiv}"
                             SnapLines="{Binding TracksViewModel.SnapLines}"
                             ShowBar="True"/>
-          <c:PartsCanvas x:Name="partsCanvas" Grid.Row="2" Grid.Column="1" ClipToBounds="True" Background="Transparent"
+          <c:PartsCanvas x:Name="partsCanvas" Grid.Row="3" Grid.Column="1" ClipToBounds="True" Background="Transparent"
                         DataContext="{Binding TracksViewModel}"
                         TickWidth="{Binding TickWidth}"
                         TrackHeight="{Binding TrackHeight}"
@@ -474,29 +515,83 @@
               </ContextMenu>
             </c:PartsCanvas.ContextMenu>
           </c:PartsCanvas>
-          <Border Grid.Row="1" Grid.RowSpan="2" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Transparent"
+          <Border Grid.Row="2" Grid.RowSpan="2" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Stretch" Background="Transparent"
                   BoxShadow="inset 0 0 5 1 #3F000000" ClipToBounds="True" IsHitTestVisible="False">
             <Border HorizontalAlignment="Center" VerticalAlignment="Center" Padding="10,5"
                     IsVisible="{Binding TracksViewModel.PlayPosWaitingRendering}" Background="{DynamicResource BackgroundBrushSemi}">
               <TextBlock Text="{DynamicResource progress.waitingrendering}" FontSize="15"/>
             </Border>
           </Border>
-          <Border Grid.Row="1" Grid.Column="2" Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Top" Margin="0" Height="24" PointerWheelChanged="ViewScalerPointerWheelChanged">
+          <ScrollBar Name="VScrollBar" Classes="music" Grid.Row="3" Grid.Column="2" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+                    Margin="4,0,4,0" Orientation="Vertical" AllowAutoHide="False"
+                    DataContext="{Binding TracksViewModel}"
+                    Maximum="{Binding VScrollBarMax, Mode=OneWay}"
+                    Value="{Binding TrackOffset}"
+                    ViewportSize="{Binding ViewportTracks}"
+                    LargeChange="{Binding ViewportTracks}"
+                    SmallChange="{Binding SmallChangeY}" PointerWheelChanged="VScrollPointerWheelChanged"/>
+          <Border Grid.Row="2" Grid.Column="2" Background="Transparent" HorizontalAlignment="Stretch" VerticalAlignment="Top" Margin="0" Height="24" PointerWheelChanged="ViewScalerPointerWheelChanged">
             <c:ViewScaler Name="VScaler" DataContext="{Binding TracksViewModel}" Value="{Binding TrackHeight}" Min="{Binding TrackHeightMin}" Max="{Binding TrackHeightMax}"/>
           </Border>
-          <GridSplitter Grid.Row="3" Grid.ColumnSpan="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
+          <GridSplitter Grid.Row="4" Grid.ColumnSpan="3" HorizontalAlignment="Stretch" VerticalAlignment="Stretch"
                         Background="{DynamicResource SystemControlBackgroundAltHighBrush}" Focusable="False" Cursor="SizeNorthSouth" IsVisible="{Binding ShowPianoRoll}"/>
-          <ContentControl Grid.Row="4" Grid.ColumnSpan="3" Name="PianoRollContainer"/>
-          <TextBlock Grid.Row="5" Grid.ColumnSpan="3" HorizontalAlignment="Stretch" Height="20" Margin="4,4,4,0" Text="{Binding ProgressText}"/>
-          <ProgressBar Grid.Row="6" Grid.ColumnSpan="3" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Value="{Binding Progress}"/>
-          <!--Right hand inspector column: the selected track's voice and mix properties.
-              Synthesizer V Studio 2 keeps its Voice and Parameters panels here.-->
-          <Border Grid.Row="0" Grid.RowSpan="7" Grid.Column="3"
-                  Background="{DynamicResource SystemControlBackgroundAltMediumLowBrush}">
-            <Border Margin="6" CornerRadius="6" Padding="4,6"
+          <ContentControl Grid.Row="5" Grid.ColumnSpan="3" Name="PianoRollContainer"/>
+          <!--Status strip: the surface the hints belong to on the left, the mouse gestures that surface
+              implements on the right, highlighted while their modifiers are held. -->
+          <Border Name="HintBar" Grid.Row="6" Grid.Column="0" Grid.ColumnSpan="4" Classes="hintBar" IsVisible="{Binding Page}">
+            <Grid ColumnDefinitions="Auto,*">
+              <TextBlock Grid.Column="0" Classes="panelCaption" Margin="8,0,6,0" VerticalAlignment="Center" Text="{Binding HintsCaption}"/>
+              <ItemsControl Grid.Column="1" ItemsSource="{Binding Hints}" VerticalAlignment="Center" Margin="0,0,4,0">
+                <ItemsControl.ItemsPanel>
+                  <ItemsPanelTemplate>
+                    <WrapPanel Orientation="Horizontal"/>
+                  </ItemsPanelTemplate>
+                </ItemsControl.ItemsPanel>
+                <ItemsControl.ItemTemplate>
+                  <DataTemplate x:DataType="vm:MouseHint">
+                    <Border Classes="hintChip" Classes.active="{Binding IsActive}">
+                      <StackPanel Orientation="Horizontal">
+                        <TextBlock Classes="hintGesture" Text="{Binding Gesture}"/>
+                        <TextBlock Classes="hintText" Text="{Binding Text}"/>
+                      </StackPanel>
+                    </Border>
+                  </DataTemplate>
+                </ItemsControl.ItemTemplate>
+              </ItemsControl>
+            </Grid>
+          </Border>
+          <ProgressBar Grid.Row="7" Grid.ColumnSpan="3" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Value="{Binding Progress}"/>
+          <!--Right hand voice column: the panel keeps the selected track's singer and properties, like
+              Synthesizer V's Voice panel. Hidden by the icon strip. -->
+          <Border Grid.Row="0" Grid.RowSpan="8" Grid.Column="3" Name="InspectorBorder"
+                  IsVisible="{Binding ShowInspector}"
+                  Background="{DynamicResource SystemControlBackgroundAltMediumLowBrush}"
+                  BorderThickness="1,0,0,0" BorderBrush="{DynamicResource MenuFlyoutPresenterBorderBrush}">
+            <Border Margin="4" CornerRadius="5" ClipToBounds="True"
                     Background="{DynamicResource SystemRegionBrush}">
               <c:TrackInspector Name="Inspector"/>
             </Border>
+          </Border>
+          <!--The icon strip of Synthesizer V: one column of square buttons that show and hide the
+              panels of the workspace. -->
+          <Border Grid.Row="0" Grid.RowSpan="8" Grid.Column="4" Name="IconStrip" Classes="iconStrip">
+            <StackPanel Orientation="Vertical" VerticalAlignment="Top" Spacing="2" Margin="0,6,0,6">
+              <ToggleButton Name="StripVoiceButton" Classes="iconStrip" IsChecked="{Binding ShowInspector}"
+                            ToolTip.Tip="{DynamicResource panel.voice}">
+                <Path Classes="filled" Width="22" Height="22"
+                      Data="M12 12a5 5 0 1 1 0-10 5 5 0 0 1 0 10zm0 2c4.42 0 8 2.24 8 5v1H4v-1c0-2.76 3.58-5 8-5z"/>
+              </ToggleButton>
+              <ToggleButton Name="StripPianoRollButton" Classes="iconStrip" IsChecked="{Binding ShowPianoRoll}"
+                            Click="OnStripPianoRollToggled" ToolTip.Tip="{DynamicResource panel.pianoroll}">
+                <Path Classes="filled" Width="22" Height="22"
+                      Data="M3 4.5H10V10.5H3ZM3 13H16V19H3Z"/>
+              </ToggleButton>
+              <ToggleButton Name="StripNoteParamsButton" Classes="iconStrip" IsChecked="{Binding ShowNoteParams}"
+                            ToolTip.Tip="{DynamicResource pianoroll.toggle.noteparams}">
+                <Path Classes="filled" Width="22" Height="22"
+                      Data="M3,17V19H9V17H3M3,5V7H13V5H3M13,21V19H21V17H13V15H11V21H13M7,9V11H3V13H7V15H9V9H7M21,13V11H11V13H21M15,9H17V7H21V5H17V3H15V9Z"/>
+              </ToggleButton>
+            </StackPanel>
           </Border>
         </Grid>
       </Carousel>

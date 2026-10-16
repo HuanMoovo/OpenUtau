@@ -79,6 +79,10 @@ namespace OpenUtau.App.Views {
             Log.Information("Initialized main window component.");
             // The inspector shows a track's properties with the view model of its row in the list.
             Inspector.Canvas = HeaderCanvas;
+            // The icon strip shows and hides the voice column; the column itself has no data context
+            // of its own, so its width follows the view model from here.
+            viewModel.WhenAnyValue(vm => vm.InspectorColumnWidth)
+                .Subscribe(width => EditorGrid.ColumnDefinitions[3].Width = width);
 
             // Edit commands validate once per frame instead of once per pointer move.
             DocManager.Inst.RequestFrame = action => RequestAnimationFrame(_ => action());
@@ -921,6 +925,58 @@ namespace OpenUtau.App.Views {
             }
         }
 
+        /// <summary>
+        /// The editor toolbar's snap division menu. It drives the piano roll's view model, so it
+        /// offers the same divisions as the roll's own button, and disappears without a roll.
+        /// </summary>
+        void OnToolbarSnapDivMenuButton(object sender, RoutedEventArgs args) {
+            if (viewModel.RollNotes == null) {
+                return;
+            }
+            // Read the divisions now: the roll rebuilds the list when the project changes.
+            ToolbarSnapDivMenu.ItemsSource = viewModel.RollNotes.SnapDivs;
+            ToolbarSnapDivMenu.PlacementTarget = sender as Button;
+            ToolbarSnapDivMenu.Open();
+        }
+
+        void OnToolbarSnapDivKeyDown(object sender, KeyEventArgs e) {
+            if (e.Key == Key.Enter && e.KeyModifiers == KeyModifiers.None) {
+                if (sender is ContextMenu menu && menu.SelectedItem is MenuItemViewModel item) {
+                    item.Command?.Execute(item.CommandParameter);
+                }
+            }
+        }
+
+        /// <summary>
+        /// The caption bar of the track list adds a track, like the plus at its end does.
+        /// </summary>
+        void OnAddTrackButton(object sender, RoutedEventArgs args) {
+            viewModel.TracksViewModel.AddTrack();
+        }
+
+        /// <summary>
+        /// The icon strip's piano roll button. The toggle itself shows and hides the roll pane; while
+        /// the roll lives in its own window, the same click brings it into the editor, which is what
+        /// "show the piano roll" means in a Synthesizer V style workspace (and keeps the pane from
+        /// opening empty).
+        /// </summary>
+        void OnStripPianoRollToggled(object sender, RoutedEventArgs args) {
+            if (pianoRoll == null || !viewModel.ShowPianoRoll || !Preferences.Default.DetachPianoRoll) {
+                return;
+            }
+            Preferences.Default.DetachPianoRoll = false;
+            Preferences.Save();
+            SetPianoRollAttachment();
+        }
+
+        /// <summary>
+        /// The hint strip of the arrangement: the hints are handed the modifiers of the very pointer
+        /// events the arrangement's own handlers act on, so the strip can only print what happens.
+        /// </summary>
+        void UpdateArrangementHints(KeyModifiers modifiers) {
+            MouseHints.Inst.SetModifiers(MouseHints.Inst.Arrangement, modifiers);
+        }
+
         void OnKeyDown(object sender, KeyEventArgs args) {
             if (PianoRollContainer.IsKeyboardFocusWithin) {
                 args.Handled = false;
@@ -1237,6 +1293,7 @@ namespace OpenUtau.App.Views {
         }
 
         public void TimelinePointerMoved(object sender, PointerEventArgs args) {
+            UpdateArrangementHints(args.KeyModifiers);
             var control = (Control)sender;
             var point = args.GetCurrentPoint(control);
             if (point.Properties.IsLeftButtonPressed) {
@@ -1428,6 +1485,7 @@ namespace OpenUtau.App.Views {
         }
 
         public void PartsCanvasPointerMoved(object sender, PointerEventArgs args) {
+            UpdateArrangementHints(args.KeyModifiers);
             var control = (Control)sender;
             var point = args.GetCurrentPoint(control);
             if (partEditState != null) {
@@ -1514,6 +1572,9 @@ namespace OpenUtau.App.Views {
                     LoadingWindow.EndLoading();
 
                     pianoRoll.ViewModel.PlaybackViewModel = viewModel.PlaybackViewModel;
+                    // From here the toolbar's snap controls, the icon strip and the hint strip all
+                    // drive/read this roll.
+                    viewModel.SetRollNotes(pianoRoll.ViewModel.NotesViewModel);
                 }
                 if (pianoRollWindow != null) {
                     pianoRollWindow.Show();
@@ -1526,6 +1587,18 @@ namespace OpenUtau.App.Views {
                 DocManager.Inst.ExecuteCmd(new LoadPartNotification(hitPartControl.part, DocManager.Inst.Project, tick));
                 pianoRoll.AttachExpressions();
             }
+        }
+
+        /// <summary>
+        /// Shows the piano roll in the editor pane. The pane, the toolbar's snap controls, the note
+        /// properties toggle of the icon strip and the hint strip all follow the attached roll; the
+        /// double click path builds the roll first and calls this, tests can call it directly.
+        /// </summary>
+        public void AttachPianoRoll(PianoRoll roll) {
+            pianoRoll = roll;
+            PianoRollContainer.Content = roll;
+            viewModel.SetRollNotes(roll.ViewModel.NotesViewModel);
+            viewModel.ShowPianoRoll = true;
         }
 
         public void SetPianoRollAttachment() {
@@ -1548,6 +1621,7 @@ namespace OpenUtau.App.Views {
         }
 
         public void MainPagePointerWheelChanged(object sender, PointerWheelEventArgs args) {
+            UpdateArrangementHints(args.KeyModifiers);
             var delta = args.Delta;
             if (args.KeyModifiers == KeyModifiers.None || args.KeyModifiers == KeyModifiers.Shift) {
                 if (args.KeyModifiers == KeyModifiers.Shift) {

@@ -230,6 +230,11 @@ namespace OpenUtau.Core.Util {
             public int PlaybackAutoScroll = 2;
             public bool ReverseLogOrder = true;
             public bool ShowIcon = true;
+            /// <summary>
+            /// The right hand voice/parameters column of the editor, toggled by the icon strip
+            /// (Synthesizer V keeps the same panel behind the same kind of strip).
+            /// </summary>
+            public bool ShowInspector = true;
 
             public bool ShowGhostNotes = true;
             public bool NoteHoverGlow = true;

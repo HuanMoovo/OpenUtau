@@ -5,19 +5,15 @@
              xmlns:c="clr-namespace:OpenUtau.App.Controls"
              mc:Ignorable="d" d:DesignWidth="220" d:DesignHeight="320"
              x:Class="OpenUtau.App.Controls.TrackInspector">
-  <UserControl.Styles>
-    <Style Selector="TextBlock.sectionTitle">
-      <Setter Property="FontSize" Value="11"/>
-      <Setter Property="FontWeight" Value="SemiBold"/>
-      <Setter Property="Height" Value="20"/>
-      <Setter Property="Padding" Value="8,0"/>
-      <Setter Property="VerticalAlignment" Value="Center"/>
-      <Setter Property="Foreground" Value="{DynamicResource ForegroundBrushSecondary}"/>
-    </Style>
-  </UserControl.Styles>
-  <Grid RowDefinitions="Auto,Auto,*">
-    <TextBlock Grid.Row="0" Classes="sectionTitle" Text="{DynamicResource tracks.tracksettings}"/>
-    <!-- The full track header: singer, phonemizer, renderer, volume, pan, track settings and fx. -->
-    <c:TrackHeader Grid.Row="1" Name="Header"/>
+  <Grid RowDefinitions="24,*">
+    <!--The caption bar of the panel, named like Synthesizer V's Voice panel. The singer's model
+        image sits at the top of the panel below it, then the singer and the grouped properties. -->
+    <Border Grid.Row="0" Classes="panelHeader">
+      <TextBlock Classes="panelCaption" Text="{DynamicResource panel.voice}"/>
+    </Border>
+    <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
+      <!-- The full track header: singer, phonemizer, renderer, volume, pan, track settings and fx. -->
+      <c:TrackHeader Name="Header"/>
+    </ScrollViewer>
   </Grid>
 </UserControl>

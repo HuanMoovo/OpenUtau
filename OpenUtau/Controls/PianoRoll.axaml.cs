@@ -1067,6 +1067,9 @@ namespace OpenUtau.App.Controls {
         }
 
         public void NotesCanvasPointerMoved(object sender, PointerEventArgs args) {
+            // Hand the bottom hint strip the modifiers of this very event (it is handled here, so the
+            // roll's background handler never sees it).
+            MouseHints.Inst.SetModifiers(MouseHints.Inst.PianoRoll, args.KeyModifiers);
             var control = (Control)sender;
             var point = args.GetCurrentPoint(control);
             args.Handled = true;
@@ -1186,6 +1189,7 @@ namespace OpenUtau.App.Controls {
 
         public void NotesCanvasPointerWheelChanged(object sender, PointerWheelEventArgs args) {
             LyricBox?.EndEdit();
+            MouseHints.Inst.SetModifiers(MouseHints.Inst.PianoRoll, args.KeyModifiers);
             var control = (Control)sender;
             var position = args.GetCurrentPoint(control).Position;
             var size = control.Bounds.Size;
@@ -1485,6 +1489,9 @@ namespace OpenUtau.App.Controls {
         }
 
         public void BackgroundPointerMoved(object sender, PointerEventArgs args) {
+            // The editor's bottom hint strip prints the roll's gestures; hand it the modifiers this
+            // very event carries, so the strip highlights what the roll is about to do.
+            MouseHints.Inst.SetModifiers(MouseHints.Inst.PianoRoll, args.KeyModifiers);
             Cursor = null;
             args.Handled = true;
         }

@@ -299,6 +299,24 @@ OpenUtau 是一个开源项目, 旨在为 UTAU 用户社区提供现代的用户
   <system:String x:Key="exps.type.numerical">数值</system:String>
   <system:String x:Key="exps.type.options">选项</system:String>
 
+  <system:String x:Key="hint.action.boxselect">框选音符</system:String>
+  <system:String x:Key="hint.action.drawnote">创建任意长度音符</system:String>
+  <system:String x:Key="hint.action.editlyrics">编辑歌词</system:String>
+  <system:String x:Key="hint.action.hscroll">水平滚动</system:String>
+  <system:String x:Key="hint.action.hzoom">水平缩放</system:String>
+  <system:String x:Key="hint.action.openroll">打开钢琴卷帘</system:String>
+  <system:String x:Key="hint.action.selectparts">框选片段</system:String>
+  <system:String x:Key="hint.action.trackheight">调整音轨高度</system:String>
+  <system:String x:Key="hint.action.vzoom">垂直缩放</system:String>
+  <system:String x:Key="hint.gesture.altwheel">Alt+滚轮</system:String>
+  <system:String x:Key="hint.gesture.ctrlwheel">Ctrl+滚轮</system:String>
+  <system:String x:Key="hint.gesture.ctrldrag">Ctrl+拖动</system:String>
+  <system:String x:Key="hint.gesture.dblnote">双击音符</system:String>
+  <system:String x:Key="hint.gesture.dblpart">双击片段</system:String>
+  <system:String x:Key="hint.gesture.drag">拖动</system:String>
+  <system:String x:Key="hint.gesture.pendrag">笔工具拖动</system:String>
+  <system:String x:Key="hint.gesture.shiftwheel">Shift+滚轮</system:String>
+
   <system:String x:Key="languages.de">德语</system:String>
   <system:String x:Key="languages.en">英语</system:String>
   <system:String x:Key="languages.es">西班牙语</system:String>
@@ -517,6 +535,10 @@ OpenUtau 是一个开源项目, 旨在为 UTAU 用户社区提供现代的用户
   <system:String x:Key="packages.update">更新</system:String>
 
   <!--<system:String x:Key="phoneme.show.error">Alt + Click to view the full error</system:String>-->
+
+  <system:String x:Key="panel.arrangement">编排</system:String>
+  <system:String x:Key="panel.pianoroll">钢琴卷帘</system:String>
+  <system:String x:Key="panel.voice">歌声</system:String>
 
   <system:String x:Key="phoneticassistant.caption">拆音助手</system:String>
   <system:String x:Key="phoneticassistant.copy">复制</system:String>
@@ -747,6 +769,10 @@ OpenUtau 是一个开源项目, 旨在为 UTAU 用户社区提供现代的用户
   <system:String x:Key="progress.saved">工程已保存 {0}</system:String>
   <system:String x:Key="progress.waitingrendering">等待渲染</system:String>
 
+  <system:String x:Key="section.mix">混音</system:String>
+  <system:String x:Key="section.pronunciation">发音</system:String>
+  <system:String x:Key="section.singer">歌手</system:String>
+
   <system:String x:Key="singererror.aliasfullwidthspaces">别名存在全角空格。</system:String>
   <system:String x:Key="singererror.aliasisnfd">别名使用了NFD编码。</system:String>
   <system:String x:Key="singererror.aliasmultiplespaces">别名存在多个空格。</system:String>
@@ -881,6 +907,7 @@ OpenUtau 是一个开源项目, 旨在为 UTAU 用户社区提供现代的用户
   <system:String x:Key="tip.notes.zoomy">鼠标滚轮纵向缩放 ▶</system:String>
   <!--<system:String x:Key="tip.playback.loop">Loop playback</system:String>-->
 
+  <system:String x:Key="tracks.add">添加音轨</system:String>
   <system:String x:Key="tracks.duplicate">复制音轨</system:String>
   <system:String x:Key="tracks.duplicatesettings">复制音轨设置</system:String>
   <system:String x:Key="tracks.favorite">喜爱</system:String>

@@ -147,6 +147,10 @@ namespace OpenUtau.App.Controls {
             // The singer's model image: a banner in the inspector panel, a thumbnail in a row.
             PortraitBannerBorder.IsVisible = !Compact;
             PortraitThumbBorder.IsVisible = Compact;
+            // The group headings belong to the inspector panel; a list row is too small for them.
+            SingerHeading.IsVisible = !Compact;
+            PronunciationHeading.IsVisible = !Compact;
+            MixHeading.IsVisible = !Compact;
         }
 
         void HeaderPointerPressed(object? sender, PointerPressedEventArgs args) {
