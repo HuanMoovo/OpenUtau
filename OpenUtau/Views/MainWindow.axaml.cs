@@ -83,6 +83,9 @@ namespace OpenUtau.App.Views {
             // of its own, so its width follows the view model from here.
             viewModel.WhenAnyValue(vm => vm.InspectorColumnWidth)
                 .Subscribe(width => EditorGrid.ColumnDefinitions[3].Width = width);
+            // The same strip shows and hides the track list column, the left hand one.
+            viewModel.WhenAnyValue(vm => vm.TrackListColumnWidth)
+                .Subscribe(width => EditorGrid.ColumnDefinitions[0].Width = width);
 
             // Edit commands validate once per frame instead of once per pointer move.
             DocManager.Inst.RequestFrame = action => RequestAnimationFrame(_ => action());

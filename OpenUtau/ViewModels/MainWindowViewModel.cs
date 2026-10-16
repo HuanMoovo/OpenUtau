@@ -132,6 +132,26 @@ namespace OpenUtau.App.ViewModels {
         public GridLength InspectorColumnWidth => ShowInspector ? new GridLength(216) : new GridLength(0);
 
         /// <summary>
+        /// The left hand track list column of the arrangement, toggled by the icon strip. Kept in the
+        /// preferences like the voice column, so the workspace comes back the way it was left.
+        /// </summary>
+        public bool ShowTrackList {
+            get => Preferences.Default.ShowTrackList;
+            set {
+                if (Preferences.Default.ShowTrackList == value) {
+                    return;
+                }
+                Preferences.Default.ShowTrackList = value;
+                Preferences.Save();
+                this.RaisePropertyChanged(nameof(ShowTrackList));
+                this.RaisePropertyChanged(nameof(TrackListColumnWidth));
+            }
+        }
+
+        /// <summary>The width of the track list column: gone while the strip hides it.</summary>
+        public GridLength TrackListColumnWidth => ShowTrackList ? new GridLength(240) : new GridLength(0);
+
+        /// <summary>
         /// The note properties pane of the piano roll (its right column). With a roll open this is
         /// the roll's own state, which persists through the preference itself; without one it is the
         /// preference the next roll will read.
@@ -178,13 +198,11 @@ namespace OpenUtau.App.ViewModels {
 
         /// <summary>
         /// The mouse hints of the surface that is on screen: the piano roll's while its pane is open,
-        /// the arrangement's otherwise. Read from the same tables the input handlers act on.
+        /// the arrangement's otherwise. Read from the same tables the input handlers act on. The
+        /// strip prints only these: which surface they belong to is said by the caption bar above it.
         /// </summary>
         public IReadOnlyList<MouseHint> Hints =>
             ShowPianoRoll ? MouseHints.Inst.PianoRoll : MouseHints.Inst.Arrangement;
-
-        /// <summary>Caption of the hint strip, naming the surface the hints belong to.</summary>
-        public string HintsCaption => ThemeManager.GetString(ShowPianoRoll ? "panel.pianoroll" : "panel.arrangement");
 
         private NotesViewModel? rollNotes;
         private IDisposable? rollNotesSub;
@@ -217,7 +235,6 @@ namespace OpenUtau.App.ViewModels {
             this.RaisePropertyChanged(nameof(SnapDivText));
             this.RaisePropertyChanged(nameof(SnapDivs));
             this.RaisePropertyChanged(nameof(Hints));
-            this.RaisePropertyChanged(nameof(HintsCaption));
         }
 
         public ReactiveCommand<UPart, RxVoid> PartDeleteCommand { get; set; }
@@ -281,7 +298,6 @@ namespace OpenUtau.App.ViewModels {
                     PianoRollMinHeight = x ? ViewConstants.PianoRollMinHeight : 0.01;
                     // The hint strip follows the surface the pointer is on.
                     this.RaisePropertyChanged(nameof(Hints));
-                    this.RaisePropertyChanged(nameof(HintsCaption));
                 });
         }
 

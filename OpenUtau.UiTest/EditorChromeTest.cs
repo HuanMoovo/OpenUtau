@@ -4,8 +4,10 @@ using System.Linq;
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Controls.Primitives;
+using Avalonia.Controls.Shapes;
 using Avalonia.Headless;
 using Avalonia.Input;
+using Avalonia.Layout;
 using Avalonia.VisualTree;
 
 using OpenUtau.App.Controls;
@@ -21,8 +23,9 @@ namespace OpenUtau.UiTest {
     /// <summary>
     /// The editor's Synthesizer V Studio 2 style chrome: one toolbar row with the transport, the
     /// tempo, the time signature, the position and the piano roll's snap; the captions of the panels;
-    /// the icon strip that shows and hides the voice column; and the bottom hint strip, which prints
-    /// the gestures of the surface above it and follows the modifiers that surface acts on.
+    /// the icon strip that shows and hides the track list, the voice column, the roll and its note
+    /// properties, and the bottom hint strip, which prints the gestures of the surface above it and
+    /// follows the modifiers that surface acts on.
     /// </summary>
     public class EditorChromeTest {
         static void AssertHasSize(Control? control, string? what = null) {
@@ -50,6 +53,43 @@ namespace OpenUtau.UiTest {
         }
 
         static MainWindowViewModel ViewModelOf(Window window) => Assert.IsType<MainWindowViewModel>(window.DataContext);
+
+        static Grid EditorGridOf(Window window) => Assert.IsType<Grid>(window.FindControl<Grid>("EditorGrid"));
+
+        static ToggleButton StripButton(Window window, string name) {
+            var strip = Assert.IsType<Border>(window.FindControl<Border>("IconStrip"));
+            var button = strip.FindControl<ToggleButton>(name);
+            Assert.NotNull(button);
+            return button!;
+        }
+
+        /// <summary>The strip button as the user sees it: present, square, with its tooltip.</summary>
+        static void AssertStripButton(Window window, string name) {
+            var button = StripButton(window, name);
+            AssertHasSize(button, name);
+            Assert.Equal(40, button.Bounds.Width);
+            Assert.Equal(40, button.Bounds.Height);
+            Assert.NotNull(button.GetValue(ToolTip.TipProperty));
+        }
+
+        static double LeftOf(Window window, Control control) =>
+            control.TranslatePoint(new Point(0, 0), window)!.Value.X;
+
+        static double RightOf(Window window, Control control) =>
+            control.TranslatePoint(new Point(control.Bounds.Width, 0), window)!.Value.X;
+
+        /// <summary>The four bars of the workspace: the arrangement's and the roll's own pair.</summary>
+        static ScrollBar[] MusicScrollBars(Window window) => window.GetVisualDescendants().OfType<ScrollBar>()
+            .Where(bar => bar.Classes.Contains("music")).ToArray();
+
+        /// <summary>The cross size of a bar or of one of its parts: the thickness the user sees.</summary>
+        static double Thickness(ScrollBar bar, Control part) =>
+            bar.Orientation == Orientation.Vertical ? part.Bounds.Width : part.Bounds.Height;
+
+        /// <summary>True while the control prints the string this resource key names.</summary>
+        static bool ShowsResourceText(Control control, Window window, string key) =>
+            control.GetVisualDescendants().OfType<TextBlock>()
+                .Any(text => text.IsEffectivelyVisible && text.Text == window.FindResource(key) as string);
 
         /// <summary>
         /// Like <see cref="MainWindowTest.WithMainWindow"/>, but knows about the piano roll's search
@@ -170,9 +210,21 @@ namespace OpenUtau.UiTest {
                 try {
                     var strip = window.FindControl<Border>("IconStrip");
                     AssertHasSize(strip, "the icon strip");
-                    foreach (var name in new[] { "StripVoiceButton", "StripPianoRollButton", "StripNoteParamsButton" }) {
-                        AssertHasSize(strip!.FindControl<Control>(name), name);
+                    foreach (var name in new[] {
+                        "StripTrackListButton", "StripVoiceButton", "StripPianoRollButton", "StripNoteParamsButton" }) {
+                        AssertStripButton(window, name);
                     }
+                    // The four glyphs come from one set: Material Design Icons paths drawn on the same
+                    // 24px grid, so no button is larger or heavier than its neighbours.
+                    var glyphs = strip!.GetVisualDescendants().OfType<Path>().ToList();
+                    Assert.Equal(4, glyphs.Count);
+                    Assert.All(glyphs, glyph => {
+                        Assert.True(glyph.Classes.Contains("filled"), "a strip glyph is not a filled icon");
+                        Assert.Equal(24, glyph.Width);
+                        Assert.Equal(24, glyph.Height);
+                        Assert.NotNull(glyph.Fill);
+                    });
+                    Assert.Single(glyphs.Select(glyph => (glyph.Width, glyph.Height)).Distinct());
                     var editor = window.FindControl<Grid>("EditorGrid")!;
                     var inspector = window.FindControl<Control>("InspectorBorder")!;
                     AssertHasSize(inspector, "the voice column");
@@ -241,6 +293,18 @@ namespace OpenUtau.UiTest {
                 AssertHasSize(hintBar, "the hint strip");
                 Assert.Same(MouseHints.Inst.Arrangement, viewModel.Hints);
                 Assert.Equal(MouseHints.Inst.Arrangement.Count, HintChips(window).Length);
+                // The panel above the strip names itself in its own caption bar; the strip must not
+                // say that name a second time, and it never did for the roll either (see below).
+                Assert.False(ShowsResourceText(hintBar, window, "panel.arrangement"),
+                    "the hint strip repeats the arrangement's own caption");
+                // The chips sit together at the strip's own left margin, always.
+                var stripLeft = LeftOf(window, hintBar);
+                var arrangementChips = HintChips(window);
+                Assert.InRange(LeftOf(window, arrangementChips[0]), stripLeft, stripLeft + 24);
+                for (int i = 1; i < arrangementChips.Length; i++) {
+                    Assert.True(LeftOf(window, arrangementChips[i]) > LeftOf(window, arrangementChips[i - 1]),
+                        "the hint chips are out of order");
+                }
 
                 try {
                     var roll = AttachRoll(window, viewModel);
@@ -249,6 +313,8 @@ namespace OpenUtau.UiTest {
                     var chips = HintChips(window);
                     Assert.Equal(MouseHints.Inst.PianoRoll.Count, chips.Length);
                     Assert.Contains(chips, chip => GestureOf(chip) == window.FindResource("hint.gesture.shiftwheel") as string);
+                    Assert.False(ShowsResourceText(hintBar, window, "panel.pianoroll"),
+                        "the hint strip repeats the piano roll's own caption");
 
                     // The hints follow the modifiers the roll's own input handling acts on.
                     var shiftChip = chips.First(chip => GestureOf(chip) == window.FindResource("hint.gesture.shiftwheel") as string);
@@ -292,6 +358,178 @@ namespace OpenUtau.UiTest {
                     Assert.True(HeadlessUi.CountRenderedColors(window) > 10, "the window looks blank");
                     HeadlessUi.SaveScreenshot(window, "ui-modernised");
                 } finally {
+                    Preferences.Default.ThemeName = wasTheme;
+                    OpenUtau.App.App.SetTheme();
+                    DocManager.Inst.Undo();
+                    HeadlessUi.Flush();
+                }
+            });
+        }
+
+        [Fact]
+        public void TheTrackListButtonCollapsesTheColumnAndTheMenuKeepsItsRow() {
+            WithEditorWindow(nameof(TheTrackListButtonCollapsesTheColumnAndTheMenuKeepsItsRow), window => {
+                var viewModel = OpenEditor(window);
+                var wasTrackList = Preferences.Default.ShowTrackList;
+                try {
+                    viewModel.ShowTrackList = true;
+                    HeadlessUi.Flush();
+                    var editor = EditorGridOf(window);
+                    var menuBand = window.FindControl<Control>("MenuBand")!;
+                    var header = window.FindControl<Control>("ArrangementHeader")!;
+                    var bar = window.FindControl<ScrollBar>("HScrollBar")!;
+                    var parts = window.FindControl<Control>("partsCanvas")!;
+                    Assert.Equal(240, editor.ColumnDefinitions[0].Width.Value);
+                    AssertHasSize(header, "the arrangement's caption bar");
+                    AssertHasSize(bar, "the arrangement's scrollbar");
+                    Assert.True(LeftOf(window, bar) >= RightOf(window, menuBand),
+                        "the menu band is under the arrangement's scrollbar");
+
+                    // The strip's first button folds the track list away and gives its room to the
+                    // arrangement, which the bar and the parts canvas both follow.
+                    Click(window, StripButton(window, "StripTrackListButton"));
+                    Assert.Equal(0, editor.ColumnDefinitions[0].Width.Value);
+                    Assert.True(header.Bounds.Width < 1, "the track list column still shows its caption");
+                    Assert.False(Preferences.Default.ShowTrackList);
+                    Assert.False(viewModel.ShowTrackList);
+                    AssertHasSize(bar, "the arrangement's scrollbar, track list hidden");
+                    Assert.True(LeftOf(window, bar) >= RightOf(window, menuBand),
+                        "the collapsed column slid the arrangement's scrollbar under the menu");
+                    // The arrangement itself starts at the window's left: the bar's row is the only
+                    // one the menu band still shares, so the bar starts where the menu ends.
+                    Assert.Equal(0, LeftOf(window, parts), 1);
+                    Assert.True(LeftOf(window, bar) > LeftOf(window, parts),
+                        "the menu band no longer holds the arrangement's scrollbar clear of itself");
+
+                    Click(window, StripButton(window, "StripTrackListButton"));
+                    Assert.Equal(240, editor.ColumnDefinitions[0].Width.Value);
+                    AssertHasSize(header, "the caption bar after the strip showed the track list again");
+                    Assert.True(Preferences.Default.ShowTrackList);
+                    Assert.True(LeftOf(window, bar) >= RightOf(window, menuBand),
+                        "the menu band is under the arrangement's scrollbar");
+                    Assert.Equal(LeftOf(window, parts), LeftOf(window, bar), 1);
+                } finally {
+                    Preferences.Default.ShowTrackList = wasTrackList;
+                    HeadlessUi.Flush();
+                }
+            });
+        }
+
+        [Fact]
+        public void TheScrollBarsAreSlimAndKeepTheirRange() {
+            WithEditorWindow(nameof(TheScrollBarsAreSlimAndKeepTheirRange), window => {
+                var viewModel = OpenEditor(window);
+                try {
+                    var roll = AttachRoll(window, viewModel);
+                    var bars = MusicScrollBars(window);
+                    Assert.Equal(4, bars.Length);
+                    // The bars of the workspace are the app's 10px bars now, and so is every other
+                    // scroll bar: a plain ScrollViewer bar carries the same size.
+                    Assert.All(bars, bar => Assert.Equal(10, Thickness(bar, bar)));
+                    var plain = window.GetVisualDescendants().OfType<ScrollBar>()
+                        .Where(bar => !bar.Classes.Contains("music")).ToList();
+                    Assert.NotEmpty(plain);
+                    Assert.All(plain.Where(bar => bar.Orientation == Orientation.Vertical),
+                        bar => Assert.Equal(10, bar.Width));
+                    Assert.All(plain.Where(bar => bar.Orientation == Orientation.Horizontal),
+                        bar => Assert.Equal(10, bar.Height));
+                    foreach (var bar in bars) {
+                        // A quiet 4px thumb inside the 10px bar, never a hairline, never bulging out.
+                        var thumb = bar.GetVisualDescendants().OfType<Thumb>().Single();
+                        Assert.True(Thickness(bar, thumb) <= Thickness(bar, bar), "the thumb bulges out of its bar");
+                        Assert.InRange(Thickness(bar, thumb), 3, 6);
+                        var length = bar.Orientation == Orientation.Vertical ? thumb.Bounds.Height : thumb.Bounds.Width;
+                        Assert.True(length >= 20, $"the thumb is a {length:F0}px hairline");
+                        // Fluent's bulky arrows are gone: a 2px stub, hidden arrow and all, so
+                        // nothing of the 16px glyph can clip and nothing paints outside the bar.
+                        var lines = bar.GetVisualDescendants().OfType<RepeatButton>()
+                            .Where(button => button.Name == "PART_LineUpButton" || button.Name == "PART_LineDownButton")
+                            .ToList();
+                        Assert.Equal(2, lines.Count);
+                        Assert.All(lines, line => {
+                            var along = bar.Orientation == Orientation.Vertical ? line.Bounds.Height : line.Bounds.Width;
+                            Assert.Equal(2, along);
+                            Assert.True(Thickness(bar, line) <= Thickness(bar, bar), "a line button sticks out of its bar");
+                            Assert.Equal(0, line.Opacity);
+                            Assert.All(line.GetVisualDescendants().OfType<PathIcon>(),
+                                icon => Assert.True(icon.Bounds.Width <= 16 && icon.Bounds.Height <= 16,
+                                    "the arrow glyph grew past Fluent's own size"));
+                        });
+                    }
+
+                    // The roll's own bar still shows the roll's range and still pages the roll.
+                    var rollBar = roll.GetVisualDescendants().OfType<ScrollBar>().Single(bar => bar.Name == "HScrollBar");
+                    var notes = roll.ViewModel.NotesViewModel;
+                    Assert.Equal(notes.HScrollBarMax, rollBar.Maximum);
+                    Assert.Equal(notes.ViewportTicks, rollBar.ViewportSize);
+                    var offset = notes.TickOffset;
+                    var pageDown = rollBar.GetVisualDescendants().OfType<RepeatButton>()
+                        .Single(button => button.Name == "PART_PageDownButton");
+                    Click(window, pageDown);
+                    Assert.True(notes.TickOffset > offset, "clicking the roll's scrollbar track no longer pages");
+                    Assert.Equal(notes.TickOffset, rollBar.Value);
+
+                    // The arrangement's bar still shows the arrangement's range.
+                    var arrangementBar = window.FindControl<ScrollBar>("HScrollBar")!;
+                    var tracks = viewModel.TracksViewModel;
+                    Assert.Equal(tracks.HScrollBarMax, arrangementBar.Maximum);
+                    Assert.Equal(tracks.ViewportTicks, arrangementBar.ViewportSize);
+                    Assert.Equal(tracks.TickOffset, arrangementBar.Value);
+
+                    // And the track height scaler of the same 24px column still follows the tracks.
+                    var scalers = window.GetVisualDescendants().OfType<ViewScaler>().ToList();
+                    Assert.Equal(2, scalers.Count);
+                    Assert.All(scalers, scaler => AssertHasSize(scaler, "the track height scaler"));
+                    tracks.SetTrackHeight(tracks.TrackHeight);
+                    HeadlessUi.Flush();
+                    Assert.Equal(tracks.TrackHeight, scalers.Single(scaler => ReferenceEquals(scaler.DataContext, tracks)).Value);
+                    Assert.Equal(notes.TrackHeight, scalers.Single(scaler => ReferenceEquals(scaler.DataContext, notes)).Value);
+                } finally {
+                    DocManager.Inst.Undo();
+                    HeadlessUi.Flush();
+                }
+            });
+        }
+
+        /// <summary>
+        /// The three pictures of the polished editor, for the owner: the workspace as it opens, the
+        /// same workspace with the track list folded away and with the voice column hidden, so the
+        /// icon strip's buttons can be seen working.
+        /// </summary>
+        [Fact]
+        public void ThePolishedEditorPicturesItself() {
+            WithEditorWindow(nameof(ThePolishedEditorPicturesItself), window => {
+                var viewModel = OpenEditor(window);
+                var wasTheme = Preferences.Default.ThemeName;
+                var (wasInspector, wasTrackList) = (Preferences.Default.ShowInspector, Preferences.Default.ShowTrackList);
+                try {
+                    viewModel.ShowTrackList = true;
+                    viewModel.ShowInspector = true;
+                    AttachRoll(window, viewModel);
+                    AssertHasSize(window.FindControl<ContentControl>("PianoRollContainer")!.Content as Control, "the piano roll");
+                    AssertHasSize(window.FindControl<Control>("InspectorBorder"), "the voice column");
+                    AssertHasSize(window.FindControl<Control>("ArrangementHeader"), "the track list caption");
+                    Preferences.Default.ThemeName = "Dark";
+                    OpenUtau.App.App.SetTheme();
+                    HeadlessUi.Flush();
+                    Assert.True(HeadlessUi.CountRenderedColors(window) > 10, "the window looks blank");
+                    HeadlessUi.SaveScreenshot(window, "ui-polished");
+
+                    // Track list folded away: the arrangement takes the room of the column.
+                    Click(window, StripButton(window, "StripTrackListButton"));
+                    Assert.Equal(0, EditorGridOf(window).ColumnDefinitions[0].Width.Value);
+                    HeadlessUi.SaveScreenshot(window, "ui-polished-noleft");
+
+                    // The voice column hidden instead, with the track list back.
+                    viewModel.ShowTrackList = true;
+                    viewModel.ShowInspector = false;
+                    HeadlessUi.Flush();
+                    Assert.Equal(240, EditorGridOf(window).ColumnDefinitions[0].Width.Value);
+                    Assert.Equal(0, EditorGridOf(window).ColumnDefinitions[3].Width.Value);
+                    HeadlessUi.SaveScreenshot(window, "ui-polished-noinspector");
+                } finally {
+                    Preferences.Default.ShowInspector = wasInspector;
+                    Preferences.Default.ShowTrackList = wasTrackList;
                     Preferences.Default.ThemeName = wasTheme;
                     OpenUtau.App.App.SetTheme();
                     DocManager.Inst.Undo();

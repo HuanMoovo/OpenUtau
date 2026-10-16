@@ -235,6 +235,10 @@ namespace OpenUtau.Core.Util {
             /// (Synthesizer V keeps the same panel behind the same kind of strip).
             /// </summary>
             public bool ShowInspector = true;
+            /// <summary>
+            /// The left hand track list column of the arrangement, toggled by the same icon strip.
+            /// </summary>
+            public bool ShowTrackList = true;
 
             public bool ShowGhostNotes = true;
             public bool NoteHoverGlow = true;

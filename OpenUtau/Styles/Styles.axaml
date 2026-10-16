@@ -416,17 +416,29 @@
     <Style Selector="^:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource NeutralAccentBrushSemi}"/>
     </Style>
+    <Style Selector="^:pressed /template/ ContentPresenter#PART_ContentPresenter">
+      <Setter Property="Background" Value="{DynamicResource NeutralAccentBrush}"/>
+    </Style>
     <Style Selector="^:checked /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource AccentBrush1Semi}"/>
     </Style>
     <Style Selector="^:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource AccentBrush1}"/>
     </Style>
+    <!--The glyph of every strip button, drawn like the roll's own tool buttons: a filled Material
+        Design Icons path in the neutral ink, brighter while the panel it names is on. -->
     <Style Selector="^ Path.filled">
       <Setter Property="Fill" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
     </Style>
     <Style Selector="^:checked Path.filled">
       <Setter Property="Fill" Value="{DynamicResource SystemControlForegroundBaseHighBrushPointerOver}"/>
+    </Style>
+    <Style Selector="^ Path.stroked">
+      <Setter Property="StrokeThickness" Value="1"/>
+      <Setter Property="Stroke" Value="{DynamicResource SystemControlForegroundBaseMediumBrush}"/>
+    </Style>
+    <Style Selector="^:checked Path.stroked">
+      <Setter Property="Stroke" Value="{DynamicResource SystemControlForegroundBaseHighBrushPointerOver}"/>
     </Style>
   </Style>
   <!--Bottom hint strip: the mouse gestures of the surface above it, highlighted while active. -->
@@ -483,54 +495,89 @@
     <Setter Property="LineHeight" Value="18"/>
   </Style>
 
-  <Style Selector="ScrollBar.music[IsExpanded=True] /template/ Rectangle#TrackRect">
-    <Setter Property="Fill" Value="Transparent" />
+  <!--Slim scrollbars, app wide: a 10px bar, a thin quiet thumb and no bulky arrow buttons. The
+       Fluent control template keeps every part it defines - PART_Track with its page buttons and
+       the thumb still drag, click on the track still pages - so only sizes and colours change. The
+       two line buttons are the exception: Fluent's 16px arrows cannot draw inside a 10px bar
+       without clipping, so they shrink to a 2px stub whose arrow is turned off. A control that
+       wants the old bars back opts out by restyling ScrollBar under its own class. -->
+  <Style Selector="ScrollBar">
+    <Setter Property="Background" Value="Transparent"/>
   </Style>
-  <Style Selector="ScrollBar.music[IsExpanded=true] /template/ Thumb.thumb">
-    <Setter Property="Background" Value="{DynamicResource NeutralAccentBrushSemi}" />
+  <Style Selector="ScrollBar:vertical">
+    <Setter Property="Width" Value="10"/>
+    <Setter Property="MinWidth" Value="10"/>
   </Style>
-  <Style Selector="ScrollBar.music[IsExpanded=true] /template/ Thumb.thumb:pointerover">
-    <Setter Property="Background" Value="{DynamicResource NeutralAccentBrush}" />
+  <Style Selector="ScrollBar:horizontal">
+    <Setter Property="Height" Value="10"/>
+    <Setter Property="MinHeight" Value="10"/>
   </Style>
-  <Style Selector="ScrollBar.music /template/ RepeatButton.line /template/ Border#Root" >
-    <Setter Property="Background" Value="Transparent" />
+  <!--No track behind the bar: only the thumb reads, like the rest of the flat chrome. The theme
+       paints the rectangle itself, so the rule has to be a trigger to win. -->
+  <Style Selector="ScrollBar[IsExpanded=True] /template/ Rectangle#TrackRect">
+    <Setter Property="Fill" Value="Transparent"/>
   </Style>
-  <Style Selector="ScrollBar.music /template/ RepeatButton.line:pointerover /template/ Border#Root" >
-    <Setter Property="Background" Value="Transparent" />
+  <Style Selector="ScrollBar[IsExpanded=False] /template/ Rectangle#TrackRect">
+    <Setter Property="Fill" Value="Transparent"/>
   </Style>
-  <Style Selector="ScrollBar.music /template/ RepeatButton.line:pressed /template/ Border#Root" >
-    <Setter Property="Background" Value="Transparent" />
+  <!--The line buttons are the exception to Fluent's template: they shrink to a 2px stub, no wider
+       than the bar itself, and the stub is turned off, arrow and all: the arrow is drawn by the
+       template itself, which outranks a style setter, and a 2px button cannot hold the 16px glyph
+       without clipping it. The stubs keep their places in the template (a scroll bar looks its
+       parts up by name) and the track's own page buttons are untouched, so clicking the track still
+       pages. -->
+  <Style Selector="ScrollBar:vertical /template/ RepeatButton#PART_LineUpButton">
+    <Setter Property="Opacity" Value="0"/>
+    <Setter Property="Width" Value="10"/>
+    <Setter Property="MinWidth" Value="0"/>
+    <Setter Property="Height" Value="2"/>
+    <Setter Property="MinHeight" Value="0"/>
+    <Setter Property="Background" Value="Transparent"/>
   </Style>
-  <Style Selector="ScrollBar.music:vertical /template/ RepeatButton.line.up /template/ Path">
-    <Setter Property="Data" Value="M 0 20 L 20 20 L 10 0 Z" />
+  <Style Selector="ScrollBar:vertical /template/ RepeatButton#PART_LineDownButton">
+    <Setter Property="Opacity" Value="0"/>
+    <Setter Property="Width" Value="10"/>
+    <Setter Property="MinWidth" Value="0"/>
+    <Setter Property="Height" Value="2"/>
+    <Setter Property="MinHeight" Value="0"/>
+    <Setter Property="Background" Value="Transparent"/>
   </Style>
-  <Style Selector="ScrollBar.music:vertical /template/ RepeatButton.line.down /template/ Path">
-    <Setter Property="Data" Value="M 0 0 L 20 0 L 10 20 Z" />
+  <Style Selector="ScrollBar:horizontal /template/ RepeatButton#PART_LineUpButton">
+    <Setter Property="Opacity" Value="0"/>
+    <Setter Property="Height" Value="10"/>
+    <Setter Property="MinHeight" Value="0"/>
+    <Setter Property="Width" Value="2"/>
+    <Setter Property="MinWidth" Value="0"/>
+    <Setter Property="Background" Value="Transparent"/>
   </Style>
-  <Style Selector="ScrollBar.music:horizontal /template/ RepeatButton.line.up /template/ Path">
-    <Setter Property="Data" Value="M 0 10 L 20 0 L 20 20 Z" />
+  <Style Selector="ScrollBar:horizontal /template/ RepeatButton#PART_LineDownButton">
+    <Setter Property="Opacity" Value="0"/>
+    <Setter Property="Height" Value="10"/>
+    <Setter Property="MinHeight" Value="0"/>
+    <Setter Property="Width" Value="2"/>
+    <Setter Property="MinWidth" Value="0"/>
+    <Setter Property="Background" Value="Transparent"/>
   </Style>
-  <Style Selector="ScrollBar.music:horizontal /template/ RepeatButton.line.down /template/ Path">
-    <Setter Property="Data" Value="M 20 10 L 0 0 L 0 20 Z" />
+  <!--The thumb: a quiet 4px pill in the middle of the 10px bar, 6px and brighter under the pointer. -->
+  <Style Selector="ScrollBar:vertical /template/ Thumb">
+    <Setter Property="MinHeight" Value="20"/>
+    <Setter Property="Width" Value="4"/>
   </Style>
-  <Style Selector="ScrollBar.music /template/ RepeatButton.line /template/ Viewbox" >
-    <Setter Property="Width" Value="16" />
-    <Setter Property="Height" Value="16" />
+  <Style Selector="ScrollBar:horizontal /template/ Thumb">
+    <Setter Property="MinWidth" Value="20"/>
+    <Setter Property="Height" Value="4"/>
   </Style>
-  <Style Selector="ScrollBar.music /template/ RepeatButton.line /template/ Path#Arrow" >
-    <Setter Property="Width" Value="16" />
-    <Setter Property="Height" Value="16" />
-    <Setter Property="Fill" Value="{DynamicResource NeutralAccentBrushSemi}" />
+  <Style Selector="ScrollBar /template/ Thumb">
+    <Setter Property="Background" Value="{DynamicResource NeutralAccentBrushSemi}"/>
   </Style>
-  <Style Selector="ScrollBar.music /template/ RepeatButton.line:pointerover /template/ Path#Arrow" >
-    <Setter Property="Width" Value="16" />
-    <Setter Property="Height" Value="16" />
-    <Setter Property="Fill" Value="{DynamicResource NeutralAccentBrush}" />
+  <Style Selector="ScrollBar:pointerover /template/ Thumb">
+    <Setter Property="Background" Value="{DynamicResource NeutralAccentBrush}"/>
   </Style>
-  <Style Selector="ScrollBar.music /template/ RepeatButton.line:pressed /template/ Path#Arrow" >
-    <Setter Property="Width" Value="16" />
-    <Setter Property="Height" Value="16" />
-    <Setter Property="Fill" Value="{DynamicResource NeutralAccentBrush}" />
+  <Style Selector="ScrollBar:vertical /template/ Thumb:pointerover">
+    <Setter Property="Width" Value="6"/>
+  </Style>
+  <Style Selector="ScrollBar:horizontal /template/ Thumb:pointerover">
+    <Setter Property="Height" Value="6"/>
   </Style>
 
   <Style Selector="HeaderedContentControl.groupbox">
