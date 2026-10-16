@@ -28,6 +28,11 @@ namespace OpenUtau.App.Controls {
                 nameof(TrackNo),
                 o => o.TrackNo,
                 (o, v) => o.TrackNo = v);
+        public static readonly DirectProperty<TrackHeader, bool> CompactProperty =
+            AvaloniaProperty.RegisterDirect<TrackHeader, bool>(
+                nameof(Compact),
+                o => o.Compact,
+                (o, v) => o.Compact = v);
 
         public double TrackHeight {
             get => trackHeight;
@@ -41,10 +46,37 @@ namespace OpenUtau.App.Controls {
             get => trackNo;
             set => SetAndRaise(TrackNoProperty, ref trackNo, value);
         }
+        /// <summary>
+        /// A compact header is one row of the track list: colour chip, name, mute and solo.
+        /// A full one is the track inspector panel, which holds the singer, phonemizer, renderer,
+        /// volume and pan controls.
+        /// </summary>
+        public bool Compact {
+            get => compact;
+            set {
+                if (SetAndRaise(CompactProperty, ref compact, value)) {
+                    UpdateVisibility();
+                }
+            }
+        }
+        /// <summary>
+        /// The singer portrait doubles as the track reorder handle, so the inspector turns it off.
+        /// </summary>
+        public bool ShowAvatar {
+            get => showAvatar;
+            set {
+                if (showAvatar != value) {
+                    showAvatar = value;
+                    UpdateVisibility();
+                }
+            }
+        }
 
         private double trackHeight;
         private Point offset;
         private int trackNo;
+        private bool compact;
+        private bool showAvatar = true;
         private readonly KeyModifiers cmdKey =
             OS.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
 
@@ -57,6 +89,7 @@ namespace OpenUtau.App.Controls {
 
         public TrackHeader() {
             InitializeComponent();
+            UpdateVisibility();
         }
 
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change) {
@@ -68,24 +101,49 @@ namespace OpenUtau.App.Controls {
             }
         }
 
-        internal void Bind(UTrack track, TrackHeaderCanvas canvas) {
+        internal void Bind(UTrack track, TrackHeaderCanvas? canvas = null) {
             this.track = track;
             this.canvas = canvas;
-            unbinds.Add(this.Bind(TrackHeightProperty, canvas.GetObservable(TrackHeaderCanvas.TrackHeightProperty)));
-            unbinds.Add(this.Bind(HeightProperty, canvas.GetObservable(TrackHeaderCanvas.TrackHeightProperty)));
-            unbinds.Add(this.Bind(OffsetProperty, canvas.WhenAnyValue(x => x.TrackOffset, trackOffset => new Point(0, -trackOffset * TrackHeight))));
+            if (canvas != null) {
+                unbinds.Add(this.Bind(TrackHeightProperty, canvas.GetObservable(TrackHeaderCanvas.TrackHeightProperty)));
+                unbinds.Add(this.Bind(HeightProperty, canvas.GetObservable(TrackHeaderCanvas.TrackHeightProperty)));
+                unbinds.Add(this.Bind(OffsetProperty, canvas.WhenAnyValue(x => x.TrackOffset, trackOffset => new Point(0, -trackOffset * TrackHeight))));
+            }
             SetPosition();
         }
 
         private void SetPosition() {
             Canvas.SetLeft(this, 0);
             Canvas.SetTop(this, Offset.Y + (track?.TrackNo ?? 0) * trackHeight);
-            if (ViewModel != null) {
-                ViewModel.IsSingerVisible = trackHeight >= ViewConstants.TrackHeightDelta * 3;
-                ViewModel.IsPhonemizerVisible = trackHeight >= ViewConstants.TrackHeightDelta * 4;
-                ViewModel.IsRendererVisible = trackHeight >= ViewConstants.TrackHeightDelta * 5;
+            UpdateVisibility();
+        }
+
+        /// <summary>
+        /// Shows the rows this header is meant to show. List rows keep publishing the row flags to the
+        /// view model, because that is what the "⋯" overflow flyout keys off; the inspector reads none
+        /// of them, since a track has a single view model that the list row and the inspector share.
+        /// </summary>
+        public void UpdateVisibility() {
+            bool inList = canvas != null;
+            // The inspector has no track height to fit into, so it shows every row.
+            bool singer = !Compact && (!inList || trackHeight >= ViewConstants.TrackHeightDelta * 3);
+            bool phonemizer = !Compact && (!inList || trackHeight >= ViewConstants.TrackHeightDelta * 4);
+            bool renderer = !Compact && (!inList || trackHeight >= ViewConstants.TrackHeightDelta * 5);
+            if (inList && ViewModel != null) {
+                ViewModel.IsSingerVisible = singer;
+                ViewModel.IsPhonemizerVisible = phonemizer;
+                ViewModel.IsRendererVisible = renderer;
                 ViewModel.AvatarHeight = Math.Min(trackHeight - (ViewConstants.TrackHeightDefault - 100), 100);
             }
+            SingerButton.IsVisible = singer;
+            PhonemizerButton.IsVisible = phonemizer;
+            RendererButton.IsVisible = renderer;
+            SettingsButton.IsVisible = renderer;
+            // Only list rows fold the properties into the overflow flyout; the inspector shows them.
+            MoreButton.IsVisible = inList;
+            VolumePanRow.IsVisible = !Compact;
+            MixFxButton.IsVisible = !Compact;
+            AvatarBorder.IsVisible = !Compact && showAvatar;
         }
 
         void HeaderPointerPressed(object? sender, PointerPressedEventArgs args) {

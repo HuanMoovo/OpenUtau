@@ -115,10 +115,19 @@ namespace OpenUtau.UiTest {
                 Assert.Equal(1, ViewModelOf(window).Page);
                 var trackCount = DocManager.Inst.Project.tracks.Count;
                 Assert.True(trackCount > 0);
-                // One header per track in the new project.
-                var headers = window.GetVisualDescendants().OfType<TrackHeader>().ToList();
+                // One compact row per track in the left track list.
+                var headers = window.GetVisualDescendants().OfType<TrackHeader>().Where(header => header.Compact).ToList();
                 Assert.Equal(trackCount, headers.Count);
                 Assert.All(headers, header => AssertHasSize(header));
+                // The right inspector shows the selected track's properties (singer, renderer, faders),
+                // which is where they live now instead of the track list.
+                var inspector = window.FindControl<Control>("Inspector");
+                AssertHasSize(inspector);
+                var propertyPanel = window.GetVisualDescendants().OfType<TrackHeader>().Single(header => !header.Compact);
+                AssertHasSize(propertyPanel);
+                Assert.True(propertyPanel.FindControl<Button>("SingerButton")!.IsEffectivelyVisible, "The inspector hides the singer button");
+                // Track rows are compact: the list row itself keeps only the name, mute and solo.
+                Assert.False(headers[0].FindControl<Button>("SingerButton")!.IsVisible, "The track list still shows the singer button");
                 AssertHasSize(window.FindControl<Control>("partsCanvas"));
                 AssertRendered(window);
             });
@@ -165,7 +174,8 @@ namespace OpenUtau.UiTest {
             WithMainWindow(nameof(SingerFlyoutSearches), window => WithFakeSingers(11, new[] { 0, 1, 2 }, new[] { 5, 6, 7 }, singers => {
                 singers[4].SearchTerms.Add("kasane teto");
                 Click(window, FindButtonWithText(window, "welcome.new"));
-                var header = window.GetVisualDescendants().OfType<TrackHeader>().First();
+                // The singer button lives in the inspector panel now, not in the compact track row.
+                var header = window.GetVisualDescendants().OfType<TrackHeader>().First(header => !header.Compact);
                 Click(window, header.FindControl<Button>("SingerButton")!);
 
                 var flyout = window.GetVisualDescendants().OfType<SingerFlyout>().SingleOrDefault();

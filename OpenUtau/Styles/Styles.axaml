@@ -4,8 +4,9 @@
         xmlns:notif="using:Avalonia.Controls.Notifications">
     <Style>
     <Style.Resources>
-      <CornerRadius x:Key="ControlCornerRadius">0</CornerRadius>
-      <CornerRadius x:Key="OverlayCornerRadius">0</CornerRadius>
+      <!-- Synthesizer V Studio 2 style soft chrome: small rounded corners everywhere. -->
+      <CornerRadius x:Key="ControlCornerRadius">4</CornerRadius>
+      <CornerRadius x:Key="OverlayCornerRadius">6</CornerRadius>
       <x:Double x:Key="MenuFlyoutThemeMinHeight">20</x:Double>
       <Thickness x:Key="MenuFlyoutScrollerMargin">0</Thickness>
       <Thickness x:Key="ComboBoxDropdownContentMargin">0</Thickness>
@@ -102,6 +103,7 @@
     <Setter Property="Height" Value="20"/>
     <Setter Property="Margin" Value="0,4"/>
     <Setter Property="Padding" Value="4,0,4,2"/>
+    <Setter Property="CornerRadius" Value="4"/>
     <Setter Property="HorizontalContentAlignment" Value="Center"/>
     <Setter Property="VerticalContentAlignment" Value="Center"/>
     <Setter Property="Template">
@@ -143,6 +145,7 @@
     <Setter Property="Height" Value="20"/>
     <Setter Property="Margin" Value="0,4"/>
     <Setter Property="Padding" Value="4,0,4,2"/>
+    <Setter Property="CornerRadius" Value="4"/>
     <Setter Property="HorizontalContentAlignment" Value="Center"/>
     <Setter Property="VerticalContentAlignment" Value="Center"/>
     <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" />
@@ -153,14 +156,21 @@
     <Style Selector="^:pressed  /template/ ContentPresenter#PART_ContentPresenter">
       <Setter Property="Background" Value="{DynamicResource NeutralAccentBrushPointerOver}" />
     </Style>
+    <!-- Active controls wear the accent, Synthesizer V style. -->
     <Style Selector="^:checked /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource NeutralAccentBrushSemi}" />
+      <Setter Property="Background" Value="{DynamicResource AccentBrush1Semi}" />
     </Style>
     <Style Selector="^:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource NeutralAccentBrush}" />
+      <Setter Property="Background" Value="{DynamicResource AccentBrush1}" />
     </Style>
     <Style Selector="^:checked:pressed /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource NeutralAccentBrushPointerOver}" />
+      <Setter Property="Background" Value="{DynamicResource AccentBrush1}" />
+    </Style>
+    <Style Selector="^:checked Path.filled">
+      <Setter Property="Fill" Value="{DynamicResource SystemControlForegroundBaseHighBrushPointerOver}" />
+    </Style>
+    <Style Selector="^:checked Path.stroked">
+      <Setter Property="Stroke" Value="{DynamicResource SystemControlForegroundBaseHighBrushPointerOver}" />
     </Style>
   </Style>
 
@@ -170,6 +180,7 @@
     <Setter Property="Height" Value="20"/>
     <Setter Property="Margin" Value="0,4"/>
     <Setter Property="Padding" Value="4,0,4,2"/>
+    <Setter Property="CornerRadius" Value="4"/>
     <Setter Property="HorizontalContentAlignment" Value="Center"/>
     <Setter Property="VerticalContentAlignment" Value="Center"/>
     <Setter Property="Background" Value="{DynamicResource SystemControlBackgroundAltHighBrush}" />
@@ -181,13 +192,13 @@
       <Setter Property="Background" Value="{DynamicResource NeutralAccentBrushPointerOver}" />
     </Style>
     <Style Selector="^:checked /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource NeutralAccentBrushSemi}" />
+      <Setter Property="Background" Value="{DynamicResource AccentBrush1Semi}" />
     </Style>
     <Style Selector="^:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource NeutralAccentBrush}" />
+      <Setter Property="Background" Value="{DynamicResource AccentBrush1}" />
     </Style>
     <Style Selector="^:checked:pressed /template/ ContentPresenter#PART_ContentPresenter">
-      <Setter Property="Background" Value="{DynamicResource NeutralAccentBrushPointerOver}" />
+      <Setter Property="Background" Value="{DynamicResource AccentBrush1}" />
     </Style>
 
     <Style Selector="^ Path.filled">
@@ -200,6 +211,15 @@
     <Style Selector="^ Path.stroked">
       <Setter Property="StrokeThickness" Value="1"/>
       <Setter Property="Stroke" Value="{DynamicResource SystemControlForegroundBaseHighBrush}" />
+    </Style>
+    <Style Selector="^:checked Path.filled">
+      <Setter Property="Fill" Value="{DynamicResource SystemControlForegroundBaseHighBrushPointerOver}" />
+    </Style>
+    <Style Selector="^:checked Ellipse.stroked">
+      <Setter Property="Stroke" Value="{DynamicResource SystemControlForegroundBaseHighBrushPointerOver}" />
+    </Style>
+    <Style Selector="^:checked Path.stroked">
+      <Setter Property="Stroke" Value="{DynamicResource SystemControlForegroundBaseHighBrushPointerOver}" />
     </Style>
   </Style>
 
@@ -312,7 +332,20 @@
     <Setter Property="Background" Value="Transparent"/>
   </Style>
   <Style Selector="Border.playback ToggleButton:checked /template/ ContentPresenter#PART_ContentPresenter">
-    <Setter Property="Background" Value="{DynamicResource NeutralAccentBrushSemi}"/>
+    <Setter Property="Background" Value="{DynamicResource AccentBrush1Semi}"/>
+  </Style>
+  <Style Selector="Border.playback ToggleButton:checked:pointerover /template/ ContentPresenter#PART_ContentPresenter">
+    <Setter Property="Background" Value="{DynamicResource AccentBrush1}"/>
+  </Style>
+  <Style Selector="Border.playback ToggleButton:checked /template/ Path">
+    <Setter Property="Fill" Value="{DynamicResource SystemControlForegroundBaseHighBrushPointerOver}"/>
+  </Style>
+
+  <Style Selector="TextBox:focus /template/ Border#PART_BorderElement">
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush1}"/>
+  </Style>
+  <Style Selector="ComboBox:focus /template/ Border#Background">
+    <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush1}"/>
   </Style>
 
   <Style Selector="Border.tips">
@@ -358,22 +391,22 @@
     <Setter Property="Data" Value="M 20 10 L 0 0 L 0 20 Z" />
   </Style>
   <Style Selector="ScrollBar.music /template/ RepeatButton.line /template/ Viewbox" >
-    <Setter Property="Width" Value="24" />
-    <Setter Property="Height" Value="24" />
+    <Setter Property="Width" Value="16" />
+    <Setter Property="Height" Value="16" />
   </Style>
   <Style Selector="ScrollBar.music /template/ RepeatButton.line /template/ Path#Arrow" >
-    <Setter Property="Width" Value="24" />
-    <Setter Property="Height" Value="24" />
+    <Setter Property="Width" Value="16" />
+    <Setter Property="Height" Value="16" />
     <Setter Property="Fill" Value="{DynamicResource NeutralAccentBrushSemi}" />
   </Style>
   <Style Selector="ScrollBar.music /template/ RepeatButton.line:pointerover /template/ Path#Arrow" >
-    <Setter Property="Width" Value="24" />
-    <Setter Property="Height" Value="24" />
+    <Setter Property="Width" Value="16" />
+    <Setter Property="Height" Value="16" />
     <Setter Property="Fill" Value="{DynamicResource NeutralAccentBrush}" />
   </Style>
   <Style Selector="ScrollBar.music /template/ RepeatButton.line:pressed /template/ Path#Arrow" >
-    <Setter Property="Width" Value="24" />
-    <Setter Property="Height" Value="24" />
+    <Setter Property="Width" Value="16" />
+    <Setter Property="Height" Value="16" />
     <Setter Property="Fill" Value="{DynamicResource NeutralAccentBrush}" />
   </Style>
 

@@ -151,16 +151,18 @@
                    Color="{DynamicResource AccentColor3}" />
   <SolidColorBrush x:Key="AccentBrush3Semi"
                    Color="{DynamicResource AccentColor3}" Opacity="0.5" />
+  <!-- Soft blue used by the piano roll for selection, focus rings and controls.
+       Also the starting point for the per-track pianoroll colour (see ThemeManager.ChangePianorollColor). -->
   <SolidColorBrush x:Key="SelectedTrackAccentBrush"
-                   Color="#4EA6EA" />
+                   Color="#6E9FD4" />
   <SolidColorBrush x:Key="SelectedTrackAccentLightBrush"
-                   Color="#90CAF9" />
+                   Color="#7FB0E0" />
   <SolidColorBrush x:Key="SelectedTrackAccentLightBrushSemi"
-                   Color="#90CAF9" Opacity="0.5"/>
+                   Color="#7FB0E0" Opacity="0.5"/>
   <SolidColorBrush x:Key="SelectedTrackAccentDarkBrush"
-                   Color="#1E88E5" />
+                   Color="#5A87BC" />
   <SolidColorBrush x:Key="SelectedTrackCenterKeyBrush"
-                   Color="#C8E5FC" />
+                   Color="#C8DDF5" />
   <SolidColorBrush x:Key="WarningBrush"
                    Color="{DynamicResource WarningColor}" />
 

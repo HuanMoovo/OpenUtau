@@ -223,6 +223,11 @@ namespace OpenUtau.UiTest {
                     var timeline = pianoRoll.FindControl<Canvas>("TimelineCanvas");
                     Assert.NotNull(timeline);
                     Assert.True(timeline.Bounds.Width > 0 && timeline.Bounds.Height > 0, "the piano roll timeline has no size");
+                    // How wide this canvas is depends on the window layout (track list, inspector column,
+                    // note panel), so derive the zoom from it instead of assuming one. A whole number of
+                    // ticks per pixel keeps marker positions integral, which the preview line rounds.
+                    notesVm.TickWidth = Math.Min(notesVm.TickWidth,
+                        Math.Floor(timeline.Bounds.Width / 3.0 / toTick * 480) / 480);
                     var preview = pianoRoll.FindControl<Border>("TempoDragPreview");
                     Assert.NotNull(preview);
                     Point OnTimeline(int tick) => timeline.TranslatePoint(new Point(

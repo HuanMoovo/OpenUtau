@@ -142,7 +142,8 @@ namespace OpenUtau.App {
             var light = (IResourceDictionary) Current.Resources["themes-light"]!;
             var dark = (IResourceDictionary) Current.Resources["themes-dark"]!;
             var custom = (IResourceDictionary) Current.Resources["themes-custom"]!;
-            switch (Core.Util.Preferences.Default.ThemeName) { 
+            var themeName = Core.Util.Preferences.Default.ThemeName;
+            switch (themeName) { 
                 case "Light":
                     ApplyTheme(light);
                     Current.RequestedThemeVariant = ThemeVariant.Light;
@@ -152,8 +153,16 @@ namespace OpenUtau.App {
                     Current.RequestedThemeVariant = ThemeVariant.Dark;
                     break;
                 default:
+                    if (string.IsNullOrEmpty(themeName) || !CustomTheme.Themes.ContainsKey(themeName)) {
+                        // Unset theme (fresh install) or a theme that no longer exists/never parsed:
+                        // the built-in black-gray dark theme is the default look.
+                        Core.Util.Preferences.Default.ThemeName = "Dark";
+                        ApplyTheme(dark);
+                        Current.RequestedThemeVariant = ThemeVariant.Dark;
+                        break;
+                    }
                     ApplyTheme(custom);
-                    CustomTheme.ApplyTheme(Core.Util.Preferences.Default.ThemeName);
+                    CustomTheme.ApplyTheme(themeName);
                     if (CustomTheme.Default.IsDarkMode == true) {
                         Current.RequestedThemeVariant = ThemeVariant.Dark;
                     } else {

@@ -3,48 +3,52 @@
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
   <system:Boolean x:Key="IsDarkMode">true</system:Boolean>
 
-  <Color x:Key="BackgroundColor">#26232C</Color>
-  <Color x:Key="BackgroundColorPointerOver">#36313F</Color>
-  <Color x:Key="BackgroundColorPressed">#484255</Color>
-  <Color x:Key="BackgroundColorDisabled">#2C2933</Color>
+  <!-- Synthesizer V Studio 2 style black-gray palette.
+       Chrome is near-black, panels sit one step lighter, and the accent is a soft
+       desaturated blue used for selection, focus, active controls and note blocks. -->
+  <Color x:Key="BackgroundColor">#1B1B1F</Color>
+  <Color x:Key="BackgroundColorPointerOver">#26262C</Color>
+  <Color x:Key="BackgroundColorPressed">#303038</Color>
+  <Color x:Key="BackgroundColorDisabled">#202024</Color>
 
-  <Color x:Key="ForegroundColor">#CDCAD4</Color>
-  <Color x:Key="ForegroundColorPointerOver">#E9E6F0</Color>
+  <Color x:Key="ForegroundColor">#D6D6DB</Color>
+  <Color x:Key="ForegroundColorPointerOver">#F1F1F4</Color>
   <Color x:Key="ForegroundColorPressed">#FFFFFF</Color>
-  <Color x:Key="ForegroundColorDisabled">#7E778C</Color>
+  <Color x:Key="ForegroundColorDisabled">#787882</Color>
 
-  <Color x:Key="BorderColor">#544E60</Color>
-  <Color x:Key="BorderColorPointerOver">#878096</Color>
+  <Color x:Key="BorderColor">#3A3A42</Color>
+  <Color x:Key="BorderColorPointerOver">#5A5A66</Color>
 
-  <Color x:Key="SystemAccentColor">#4EA6EA</Color>
+  <Color x:Key="SystemAccentColor">#6E9FD4</Color>
   <!-- PointerOver -->
-  <Color x:Key="SystemAccentColorLight1">#90CAF9</Color>
+  <Color x:Key="SystemAccentColorLight1">#7FB0E0</Color>
   <!-- Pressed -->
-  <Color x:Key="SystemAccentColorDark1">#1E88E5</Color>
+  <Color x:Key="SystemAccentColorDark1">#5A87BC</Color>
 
-  <Color x:Key="NeutralAccentColor">#878096</Color>
-  <Color x:Key="NeutralAccentColorPointerOver">#B0ABBC</Color>
-  <Color x:Key="AccentColor1">#4EA6EA</Color>
-  <Color x:Key="AccentColor2">#FF679D</Color>
-  <Color x:Key="AccentColor3">#E62E6E</Color>
+  <Color x:Key="NeutralAccentColor">#464B54</Color>
+  <Color x:Key="NeutralAccentColorPointerOver">#5B6270</Color>
+  <Color x:Key="AccentColor1">#6E9FD4</Color>
+  <Color x:Key="AccentColor2">#7FB0E0</Color>
+  <!-- Warm khaki, reserved for markers: playhead, pitch snap points. -->
+  <Color x:Key="AccentColor3">#C9B77E</Color>
 
-  <Color x:Key="TickLineColor">#615B73</Color>
-  <Color x:Key="BarNumberColor">#B0ABBC</Color>
-  <Color x:Key="FinalPitchColor">#C0BACD</Color>
-  <Color x:Key="TrackBackgroundAltColor">#302C38</Color>
-  
-  <Color x:Key="WarningColor">#433519</Color>
+  <Color x:Key="TickLineColor">#3B3B43</Color>
+  <Color x:Key="BarNumberColor">#8C8C97</Color>
+  <Color x:Key="FinalPitchColor">#A6A6B0</Color>
+  <Color x:Key="TrackBackgroundAltColor">#222228</Color>
+
+  <Color x:Key="WarningColor">#3D3421</Color>
 
   <!--Keyboard Background-->
-  <Color x:Key="WhiteKeyColorLeft">#CC527C</Color>
-  <Color x:Key="WhiteKeyColorRight">#FF4D8B</Color>
-  <Color x:Key="WhiteKeyNameColor">#FFFFFF</Color>
+  <Color x:Key="WhiteKeyColorLeft">#C7C7CE</Color>
+  <Color x:Key="WhiteKeyColorRight">#E3E3E8</Color>
+  <Color x:Key="WhiteKeyNameColor">#2A2A30</Color>
 
-  <Color x:Key="CenterKeyColorLeft">#CCA5B0</Color>
-  <Color x:Key="CenterKeyColorRight">#FFCEDC</Color>
-  <Color x:Key="CenterKeyNameColor">#FF4D8B</Color>
+  <Color x:Key="CenterKeyColorLeft">#8FB6DE</Color>
+  <Color x:Key="CenterKeyColorRight">#B4D0EC</Color>
+  <Color x:Key="CenterKeyNameColor">#1B1B1F</Color>
 
   <Color x:Key="BlackKeyColorLeft">Transparent</Color>
   <Color x:Key="BlackKeyColorRight">Transparent</Color>
-  <Color x:Key="BlackKeyNameColor">#CDCAD4</Color>
+  <Color x:Key="BlackKeyNameColor">#9A9AA4</Color>
 </ResourceDictionary>

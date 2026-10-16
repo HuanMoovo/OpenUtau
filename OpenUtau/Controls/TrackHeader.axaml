@@ -4,7 +4,7 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
              xmlns:vm="using:OpenUtau.App.ViewModels"
              mc:Ignorable="d" d:DesignWidth="300" d:DesignHeight="104"
-             x:Class="OpenUtau.App.Controls.TrackHeader" Width="300" Height="104" TrackNo="{Binding TrackNo}"
+             x:Class="OpenUtau.App.Controls.TrackHeader" TrackNo="{Binding TrackNo}"
              x:DataType="vm:TrackHeaderViewModel">
   <Design.DataContext>
     <vm:TrackHeaderViewModel/>
@@ -101,7 +101,7 @@
     <Grid ColumnDefinitions="auto,*" Background="Transparent">
       <Panel Grid.Column="0" VerticalAlignment="Stretch" Background="Transparent" PointerWheelChanged="MoveHandleScrolled"
              PointerMoved="MoveHandleMoved" PointerPressed="MoveHandlePressed" PointerReleased="MoveHandleReleased">
-        <Border BorderThickness="0,0,1,1" VerticalAlignment="Top" CornerRadius="0,0,2,0"
+        <Border Name="AvatarBorder" BorderThickness="0,0,1,1" VerticalAlignment="Top" CornerRadius="0,0,2,0"
                 BorderBrush="{DynamicResource NeutralAccentBrushSemi}" ClipToBounds="True" IsHitTestVisible="false">
           <Image Height="{Binding AvatarHeight}" Source="{Binding Avatar}" Stretch="Uniform" VerticalAlignment="Top" ToolTip.Tip="{Binding Singer}"/>
         </Border>
@@ -113,25 +113,27 @@
       </Panel>
       <!-- One grid for the labels and the buttons so they line up: mute and solo with the name,
            settings with the renderer and fx with the faders. Rows hidden at small track heights
-           fold into the more menu; settings goes along with the renderer. -->
+           fold into the more menu; settings goes along with the renderer.
+           Which rows show is set by TrackHeader.UpdateVisibility, so the same control can render
+           both the compact track list row and the full inspector panel. -->
       <Grid Grid.Column="1" ColumnDefinitions="*,auto,auto,auto" RowDefinitions="auto,auto,auto,auto,auto,*">
         <Button Classes="clear" Grid.Row="0" Margin="1" Padding="2,0,0,0" Height="18"
                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Focusable="False"
                 Content="{Binding TrackName}" Click="TrackNameButtonClicked"/>
-        <Button Name="SingerButton" Grid.Row="1" Grid.ColumnSpan="4" Classes="clear" Margin="1" Padding="2,0,0,0" Height="18" IsVisible="{Binding IsSingerVisible}"
+        <Button Name="SingerButton" Grid.Row="1" Grid.ColumnSpan="4" Classes="clear" Margin="1" Padding="2,0,0,0" Height="18"
                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Focusable="False"
                 Content="{Binding Singer, TargetNullValue={StaticResource tracks.selectsinger}}" Click="SingerButtonClicked"
                 ContextRequested="SingerButtonContextRequested" ToolTip.Tip="{Binding Singer}"/>
-        <Button Grid.Row="2" Grid.ColumnSpan="4" Classes="clear" Margin="1" Padding="2,0,0,0" Height="18" IsVisible="{Binding IsPhonemizerVisible}"
+        <Button Name="PhonemizerButton" Grid.Row="2" Grid.ColumnSpan="4" Classes="clear" Margin="1" Padding="2,0,0,0" Height="18"
                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Focusable="False"
                 Content="{Binding PhonemizerTag}" Click="PhonemizerButtonClicked" ContextRequested="PhonemizerButtonContextRequested"
                 ToolTip.Tip="{Binding Phonemizer}" ContextMenu="{StaticResource PhonemizerMenuRes}"/>
-        <Button Grid.Row="3" Grid.ColumnSpan="3" Classes="clear" Margin="1" Padding="2,0,0,0" Height="18" IsVisible="{Binding IsRendererVisible}"
+        <Button Name="RendererButton" Grid.Row="3" Grid.ColumnSpan="3" Classes="clear" Margin="1" Padding="2,0,0,0" Height="18"
                 HorizontalAlignment="Stretch" HorizontalContentAlignment="Left" Focusable="False"
-                Content="{Binding Renderer}" Click="RendererButtonClicked" ContextRequested="RendererButtonContextRequested"
+                Content="{Binding Renderer, TargetNullValue={StaticResource tracks.selectrenderer}}" Click="RendererButtonClicked" ContextRequested="RendererButtonContextRequested"
                 ToolTip.Tip="{DynamicResource tracks.selectrenderer}" ContextMenu="{StaticResource RendererMenuRes}"/>
         <Button Name="MoreButton" Grid.Column="1" Grid.Row="0" Classes="clear" Height="18" Width="18" Margin="1" Padding="0"
-                VerticalAlignment="Top" Content="⋯" IsVisible="{Binding !IsRendererVisible}">
+                VerticalAlignment="Top" Content="⋯">
           <Button.Flyout>
             <Flyout>
               <StackPanel Spacing="2">
@@ -187,14 +189,14 @@
             </ContextMenu>
           </ToggleButton.ContextMenu>
         </ToggleButton>
-        <Button Grid.Row="3" Grid.Column="3" Margin="1" Padding="0" Width="18" Height="18" Background="Transparent"
-                      Click="TrackSettingsButtonClicked" IsVisible="{Binding IsRendererVisible}"
+        <Button Name="SettingsButton" Grid.Row="3" Grid.Column="3" Margin="1" Padding="0" Width="18" Height="18" Background="Transparent"
+                      Click="TrackSettingsButtonClicked"
                       ToolTip.Tip="{DynamicResource tracks.tracksettings}">
           <Path Classes="clear" Height="18" Width="18"
                 Data="M9.001425 11.34a2.35 2.35 0 0 1-2.34-2.34 2.35 2.35 0 0 1 2.34-2.34 2.35 2.35 0 0 1 2.35 2.34 2.35 2.35 0 0 1-2.35 2.35m4.98-1.7a5.2 5.2 0 0 0 0-1.32l1.41-1.1c.13-.1.16-.27.08-.42l-1.34-2.32a.33.33 0 0 0-.4-.15l-1.67.67a4.86 4.86 0 0 0-1.14-.65l-.25-1.78a.34.34 0 0 0-.33-.28h-2.68c-.17 0-.3.12-.33.28l-.25 1.78c-.42.16-.79.4-1.14.65l-1.66-.67a.33.33 0 0 0-.41.15l-1.34 2.32a.33.33 0 0 0 .08.43l1.41 1.09a5.73 5.73 0 0 0 0 1.32l-1.41 1.11a.33.33 0 0 0-.08.43l1.34 2.32c.08.15.26.2.4 0.15l1.67-.68c.35.27.71.5 1.14.66l.25 1.78c.02.16.16.28.33.28h2.68c.17 0 .3-.12.33-.28l.25-1.78c.42-.17.79-.4 1.14-.66l1.66.68c.15.05.33 0 .41-.15l1.34-2.32a.34.34 0 0 0-.08-.43l-1.41-1.1z"
                 Fill="{StaticResource NeutralAccentBrush}"/>
         </Button>
-        <Grid Height="18" Margin="0,1,0,0" Grid.Column="0" Grid.Row="4" Grid.ColumnSpan="3" ColumnDefinitions="3,2*,2,28,5,*,2,26">
+        <Grid Name="VolumePanRow" Height="18" Margin="0,1,0,0" Grid.Column="0" Grid.Row="4" Grid.ColumnSpan="3" ColumnDefinitions="3,2*,2,28,5,*,2,26">
           <Grid.Styles>
             <Style Selector="Slider, TextBlock, TextBox">
               <Setter Property="VerticalAlignment" Value="Center"/>
@@ -233,7 +235,7 @@
                   BorderThickness="0" IsVisible="False" IsEnabled="False" TextAlignment="Center" FontSize="9"
                   FontFamily="monospace" KeyDown="VolumeOrPanTextBoxKeyDown" LostFocus="VolumeOrPanTextBoxLostFocus"/>
         </Grid>
-        <Button Grid.Row="4" Grid.Column="3" VerticalAlignment="Center" Classes="toolbar fxButton" Margin="1" Width="18" Height="18"
+        <Button Name="MixFxButton" Grid.Row="4" Grid.Column="3" VerticalAlignment="Center" Classes="toolbar fxButton" Margin="1" Width="18" Height="18"
                       ToolTip.Tip="{DynamicResource tracks.mixfx}"
                       Classes.fxOn="{Binding MixFxEnabled}"
                       Command="{Binding OpenMixFxDialog}">

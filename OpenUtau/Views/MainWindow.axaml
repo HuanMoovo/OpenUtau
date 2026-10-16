@@ -261,7 +261,7 @@
         </Grid>
       
         <!--Main page-->
-        <Grid ColumnDefinitions="300,*,24" Grid.Row="0" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" KeyDown="OnCarouselPageKeyDown">
+        <Grid ColumnDefinitions="240,*,24,216" Grid.Row="0" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" KeyDown="OnCarouselPageKeyDown">
           <Grid.RowDefinitions>
             <RowDefinition Height="24"/>
             <RowDefinition Height="24"/>
@@ -273,7 +273,7 @@
             <RowDefinition Height="20"/>
             <RowDefinition Height="4"/>
           </Grid.RowDefinitions>
-          <Panel Grid.Row="1" Grid.Column="0" HorizontalAlignment="Stretch" VerticalAlignment="Top" Height="24">
+          <Panel Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" HorizontalAlignment="Stretch" VerticalAlignment="Top" Height="24">
             <Border Classes="playback" Width="72" HorizontalAlignment="Left" Margin="4,0">
               <Grid>
                 <TextBlock Width="28" HorizontalAlignment="Left"
@@ -358,7 +358,7 @@
             <Path Name="PlayPos"
                   Canvas.Left="{Binding TracksViewModel.PlayPosX}"
                   Canvas.Top="0" ZIndex="100" IsHitTestVisible="False"
-                  Fill="{DynamicResource NeutralAccentBrushSemi}"
+                  Fill="{DynamicResource AccentBrush3}"
                   Data="M -6.5 0 L 6.5 0 L 6.5 3 L 0 9 L -6.5 3 Z"/>
             <!-- Line shown at the drop position while a tempo marker is dragged. -->
             <Border Name="TempoDragPreview"
@@ -378,7 +378,7 @@
               </ContextMenu>
             </Canvas.ContextMenu>
           </Canvas>
-          <c:TrackHeaderCanvas Grid.Row="2" Grid.Column="0" ClipToBounds="True" Background="Transparent"
+          <c:TrackHeaderCanvas Name="HeaderCanvas" Grid.Row="2" Grid.Column="0" ClipToBounds="True" Background="Transparent"
                               DataContext="{Binding TracksViewModel}"
                               TrackHeight="{Binding TrackHeight}"
                               TrackOffset="{Binding TrackOffset}"
@@ -430,7 +430,7 @@
                        Height="{Binding $parent.Bounds.Height, Mode=OneWay}"
                        ZIndex="99" IsHitTestVisible="False"
                        IsVisible="{Binding $parent[Window].((vm:MainWindowViewModel)DataContext).PlaybackViewModel.IsPlaying}"
-                       Fill="{DynamicResource AccentBrush2}"/>
+                       Fill="{DynamicResource AccentBrush3}"/>
             <Rectangle Name="SelectionBox" StrokeThickness="2"
                       Stroke="{DynamicResource SystemControlForegroundBaseHighBrush}"
                       Fill="{DynamicResource TickLineBrushLow}" ZIndex="1000"
@@ -489,6 +489,15 @@
           <ContentControl Grid.Row="4" Grid.ColumnSpan="3" Name="PianoRollContainer"/>
           <TextBlock Grid.Row="5" Grid.ColumnSpan="3" HorizontalAlignment="Stretch" Height="20" Margin="4,4,4,0" Text="{Binding ProgressText}"/>
           <ProgressBar Grid.Row="6" Grid.ColumnSpan="3" VerticalAlignment="Stretch" HorizontalAlignment="Stretch" Value="{Binding Progress}"/>
+          <!--Right hand inspector column: the selected track's voice and mix properties.
+              Synthesizer V Studio 2 keeps its Voice and Parameters panels here.-->
+          <Border Grid.Row="0" Grid.RowSpan="7" Grid.Column="3"
+                  Background="{DynamicResource SystemControlBackgroundAltMediumLowBrush}">
+            <Border Margin="6" CornerRadius="6" Padding="4,6"
+                    Background="{DynamicResource SystemRegionBrush}">
+              <c:TrackInspector Name="Inspector"/>
+            </Border>
+          </Border>
         </Grid>
       </Carousel>
     </Grid>

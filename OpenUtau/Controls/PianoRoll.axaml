@@ -116,7 +116,7 @@
         <Path Name="PlayPos"
               Canvas.Left="{Binding NotesViewModel.PlayPosX}"
               Canvas.Top="0" ZIndex="100" IsHitTestVisible="False"
-              Fill="{DynamicResource NeutralAccentBrushSemi}"
+              Fill="{DynamicResource AccentBrush3}"
               Data="M -6.5 0 L 6.5 0 L 6.5 3 L 0 9 L -6.5 3 Z"/>
         <!-- Line shown at the drop position while a tempo marker is dragged. -->
         <Border Name="TempoDragPreview"
@@ -217,7 +217,7 @@
                    Height="{Binding $parent.Bounds.Height, Mode=OneWay}"
                    ZIndex="99" IsHitTestVisible="False"
                    IsVisible="{Binding PlaybackViewModel.IsPlaying}"
-                   Fill="{DynamicResource AccentBrush2}"/>
+                   Fill="{DynamicResource AccentBrush3}"/>
         <Rectangle Name="SelectionBox" StrokeThickness="2"
                    Stroke="{DynamicResource SystemControlForegroundBaseHighBrush}"
                    Fill="{DynamicResource TickLineBrushLow}" ZIndex="1000"

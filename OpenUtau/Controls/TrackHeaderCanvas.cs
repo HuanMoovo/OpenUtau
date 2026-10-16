@@ -153,6 +153,17 @@ namespace OpenUtau.App.Controls {
                 if (change.NewValue != null && change.NewValue is ObservableCollection<UTrack> newCol) {
                     newCol.CollectionChanged += Items_CollectionChanged;
                 }
+            } else if (change.Property == BoundsProperty) {
+                // Rows span the whole (resizable) column, and the reorder line matches it too.
+                if (TrackMover != null) {
+                    TrackMover.EndPoint = new(Bounds.Width, 0);
+                }
+                foreach (var (_, header) in trackHeaders) {
+                    header.Width = Bounds.Width;
+                }
+                if (trackAdder != null) {
+                    trackAdder.Width = Bounds.Width;
+                }
             } else if (change.Property == DataContextProperty) {
                 if (trackAdder != null) {
                     trackAdder.DataContext = DataContext;
@@ -196,14 +207,26 @@ namespace OpenUtau.App.Controls {
             var header = new TrackHeader() {
                 DataContext = vm,
                 ViewModel = vm,
+                // The track list shows compact rows; the full property panel lives in the inspector.
+                Compact = true,
             };
             header.Bind(track, this);
+            if (Bounds.Width > 0) {
+                header.Width = Bounds.Width;
+            }
             Children.Add(header);
             trackHeaders.Add(track, header);
             if (trackAdder != null) {
                 trackAdder.TrackNo = trackHeaders.Count;
             }
         }
+
+        /// <summary>
+        /// The header view model of a track, so the inspector panel can show one track's properties
+        /// while staying in sync with its row in the list (they share the same view model).
+        /// </summary>
+        public TrackHeaderViewModel? GetHeaderViewModel(UTrack track) =>
+            trackHeaders.TryGetValue(track, out var header) ? header.ViewModel : null;
 
         void Remove(UTrack track) {
             var header = trackHeaders[track];

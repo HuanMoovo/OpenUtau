@@ -77,6 +77,8 @@ namespace OpenUtau.App.Views {
             };
             InitializeComponent();
             Log.Information("Initialized main window component.");
+            // The inspector shows a track's properties with the view model of its row in the list.
+            Inspector.Canvas = HeaderCanvas;
 
             // Edit commands validate once per frame instead of once per pointer move.
             DocManager.Inst.RequestFrame = action => RequestAnimationFrame(_ => action());
