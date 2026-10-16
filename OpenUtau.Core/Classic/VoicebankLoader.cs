@@ -114,6 +114,9 @@ namespace OpenUtau.Classic {
             if (bankConfig != null) {
                 ApplyConfig(voicebank, bankConfig);
             }
+            if (string.IsNullOrWhiteSpace(voicebank.Portrait)) {
+                ApplyPortraitFallback(voicebank, bankConfig);
+            }
         }
 
         public static void ParseCharacterTxt(Voicebank voicebank, Stream stream, string filePath, string basePath, Encoding encoding) {
@@ -214,6 +217,28 @@ namespace OpenUtau.Classic {
             if (bank.SingerType is USingerType.Classic && bankConfig.UseFilenameAsAlias != null) {
                 bank.UseFilenameAsAlias = bankConfig.UseFilenameAsAlias;
             }
+        }
+
+        /// <summary>
+        /// character.yaml does not name a portrait: use a conventionally named image from the
+        /// voicebank folder (portrait.*, character.*, 立绘.*) or, as the last resort, the bank's
+        /// own icon (character.txt "image=" / character.yaml "icon=", e.g. avatar.jpg), so a bank
+        /// that ships only an avatar.jpg still shows its picture behind the piano roll.
+        /// Banks with no usable image keep Portrait null and behave exactly as before.
+        /// </summary>
+        public static void ApplyPortraitFallback(Voicebank bank, VoicebankConfig? bankConfig) {
+            if (string.IsNullOrEmpty(bank.File)) {
+                return;
+            }
+            var portrait = PortraitFinder.FindInFolder(Path.GetDirectoryName(bank.File), bank.Image);
+            if (portrait == null) {
+                return;
+            }
+            bank.Portrait = portrait;
+            // The bank never named a portrait, so how it is shown comes from its own portrait
+            // settings when it has any. Opacity 0 would make the fallback invisible.
+            bank.PortraitOpacity = bankConfig?.PortraitOpacity ?? VoicebankConfig.DefaultPortraitOpacity;
+            bank.PortraitHeight = bankConfig?.PortraitHeight ?? 0;
         }
 
         public static void LoadSubbanks(Voicebank voicebank) {

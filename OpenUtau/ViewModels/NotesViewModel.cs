@@ -132,11 +132,15 @@ namespace OpenUtau.App.ViewModels {
         bool snapLinesStale = true;
         private int playPosTick;
         private UNote[] playbackNotes = Array.Empty<UNote>();
+        // What the portrait state below refers to: the source path and the height it was built
+        // with. The key is reserved before the decode starts, so overlapping refreshes share
+        // one decode. Opacity only affects PortraitMask, never the bitmap.
         private string? portraitSource;
-        // Cache key of the loaded portrait: source path, plus the height/opacity it was built
-        // with, so a live character.yaml edit (or a Preferences override) is picked up.
         private int portraitSourceHeight;
-        private float portraitSourceOpacity;
+        private int portraitGeneration;
+        // Sources whose image could not be read, so a bank with a missing file is not retried
+        // on every part and note switch.
+        private readonly HashSet<string> failedPortraits = new HashSet<string>();
         private readonly object portraitLock = new object();
         private int userSnapDiv = -2;
         private int userKey => Project.key;
@@ -380,7 +384,7 @@ namespace OpenUtau.App.ViewModels {
                             }
                             break;
                         case "Portrait":
-                            LoadPortrait(Part, Project);
+                            LoadPortrait(Part, Project, force: true);
                             break;
                         case "TrackColor":
                             LoadTrackColor(Part, Project);
@@ -620,12 +624,15 @@ namespace OpenUtau.App.ViewModels {
             return Portrait.CreateScaledBitmap(new PixelSize(targetWidth, targetHeight));
         }
 
-        private void LoadPortrait(UPart? part, UProject? project) {
+        // force: the user asked for a portrait refresh (View > Show portrait, or a Preferences
+        // change), so a load that failed earlier is retried once.
+        private void LoadPortrait(UPart? part, UProject? project, bool force = false) {
             if (part == null || project == null) {
                 lock (portraitLock) {
                     Avatar = null;
                     Portrait = null;
                     portraitSource = null;
+                    portraitSourceHeight = 0;
                 }
                 return;
             }
@@ -649,6 +656,7 @@ namespace OpenUtau.App.ViewModels {
                 lock (portraitLock) {
                     Portrait = null;
                     portraitSource = null;
+                    portraitSourceHeight = 0;
                 }
                 return;
             }
@@ -659,39 +667,72 @@ namespace OpenUtau.App.ViewModels {
             float effectiveOpacity = Preferences.Default.PortraitOpacity != 0
                 ? Preferences.Default.PortraitOpacity
                 : singer.PortraitOpacity;
-            if (portraitSource != singer.Portrait
-                || portraitSourceHeight != effectiveHeight
-                || portraitSourceOpacity != effectiveOpacity) {
-                lock (portraitLock) {
-                    Portrait?.Dispose();
+            string source = singer.Portrait;
+            bool load;
+            int generation = 0;
+            lock (portraitLock) {
+                // The load runs off the UI thread and takes a while, so the source is reserved
+                // here, before it starts: the refreshes that arrive meanwhile (every part and
+                // note switch makes one) find it already handled instead of decoding it twice.
+                load = portraitSource != source || portraitSourceHeight != effectiveHeight;
+                if (load) {
+                    var replaced = Portrait;
                     Portrait = null;
-                    portraitSource = null;
+                    replaced?.Dispose();
+                    portraitSource = source;
                     portraitSourceHeight = effectiveHeight;
-                    portraitSourceOpacity = effectiveOpacity;
+                    generation = ++portraitGeneration;
                 }
-                PortraitMask = new SolidColorBrush(Avalonia.Media.Colors.White, effectiveOpacity);
-                Task.Run(() => {
-                    lock (portraitLock) {
-                        try {
-                            var data = singer.LoadPortrait();
-                            if (data == null) {
-                                Portrait = null;
-                                portraitSource = null;
-                            } else {
-                                using (var stream = new MemoryStream(data)) {
-                                    Portrait = ResizePortrait(new Bitmap(stream), effectiveHeight);
-                                    portraitSource = singer.Portrait;
+            }
+            // The mask only carries the opacity, so it is refreshed on every call and can never
+            // be left stale or null while a bitmap is showing.
+            PortraitMask = new SolidColorBrush(Avalonia.Media.Colors.White, effectiveOpacity);
+            if (!load) {
+                return;
+            }
+            lock (portraitLock) {
+                if (!force && failedPortraits.Contains(source)) {
+                    return;
+                }
+            }
+            Task.Run(() => {
+                Bitmap? loaded = null;
+                try {
+                    var data = singer.LoadPortrait();
+                    if (data != null) {
+                        using (var stream = new MemoryStream(data)) {
+                            var decoded = new Bitmap(stream);
+                            try {
+                                loaded = ResizePortrait(decoded, effectiveHeight);
+                            } finally {
+                                // ResizePortrait hands back its argument when no resizing is
+                                // needed; otherwise the full-size decode is not used again.
+                                if (!ReferenceEquals(loaded, decoded)) {
+                                    decoded.Dispose();
                                 }
                             }
-                        } catch (Exception e) {
-                            Portrait?.Dispose();
-                            Portrait = null;
-                            portraitSource = null;
-                            Log.Error(e, $"Failed to load Portrait {singer.Portrait}");
                         }
                     }
-                });
-            }
+                } catch (Exception e) {
+                    Log.Error(e, $"Failed to load Portrait {source}");
+                }
+                lock (portraitLock) {
+                    if (generation != portraitGeneration) {
+                        // A newer refresh replaced this load while it ran. Its bitmap must be
+                        // neither shown nor leaked.
+                        loaded?.Dispose();
+                        return;
+                    }
+                    if (loaded == null) {
+                        failedPortraits.Add(source);
+                        Portrait = null;
+                        portraitSource = null;
+                        portraitSourceHeight = 0;
+                        return;
+                    }
+                    Portrait = loaded;
+                }
+            });
         }
         private void LoadWindowTitle(UPart? part, UProject? project) {
             if (part == null || project == null) {

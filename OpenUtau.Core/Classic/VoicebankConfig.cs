@@ -52,7 +52,9 @@ namespace OpenUtau.Classic {
         [Description("Portrait image shown in the piano roll, relative to the voicebank folder.")]
         public string Portrait;
         [Description("Opacity of the portrait, from 0 (transparent) to 1 (opaque).")]
-        public float PortraitOpacity = 0.67f;
+        public float PortraitOpacity = DefaultPortraitOpacity;
+        /// <summary>Opacity used when a voicebank sets none, and for fallback portraits.</summary>
+        public const float DefaultPortraitOpacity = 0.67f;
         [Description("Height in pixels the portrait is scaled to. 0 scales portraits taller than 800 pixels down to 800.")]
         public int PortraitHeight = 0;
         [Description("Author of the voicebank.")]

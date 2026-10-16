@@ -84,6 +84,12 @@ namespace OpenUtau.Core.Vogen {
                 if (!string.IsNullOrEmpty(meta.avatar)) {
                     avatar = Zip.ExtractBytes(archive, meta.avatar);
                 }
+                if (string.IsNullOrEmpty(meta.portrait)) {
+                    // meta.json names no portrait: portrait.*, character.*, 立绘.*, then the
+                    // avatar, the same chain a classic voicebank folder follows.
+                    meta.portrait = PortraitFinder.FindInEntries(
+                        archive.Entries.Select(entry => entry.Key), meta.avatar);
+                }
             }
             return new VogenSinger(filePath, meta, model, avatar);
         }

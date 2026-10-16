@@ -159,7 +159,11 @@
                         SnapLines="{Binding NotesViewModel.SnapLines}"
                         ShowBar="False"/>
       <!-- Expression backgrounds end -->
-      <Canvas Name="PortraitCanvas" Grid.Row="3" Grid.Column="1" HorizontalAlignment="Stretch" IsHitTestVisible="False">
+      <!-- The portrait stands behind the note grid: drawn after the grid backgrounds and before the
+           notes, clipped to the note area (it used to spill over the expression lanes), and never
+           hit-testable so the grid keeps its pointer input. -->
+      <Canvas Name="PortraitCanvas" Grid.Row="3" Grid.Column="1" HorizontalAlignment="Stretch"
+              ClipToBounds="True" IsHitTestVisible="False">
         <Image Name="PortraitImage" Source="{Binding NotesViewModel.Portrait}" OpacityMask="{Binding NotesViewModel.PortraitMask}" Stretch="None"/>
       </Canvas>
       <Border Grid.Row="3" Grid.Column="1" HorizontalAlignment="Stretch" VerticalAlignment="Bottom"
