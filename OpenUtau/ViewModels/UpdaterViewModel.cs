@@ -34,17 +34,29 @@ namespace OpenUtau.App.ViewModels {
             public GithubReleaseAsset[] assets = new GithubReleaseAsset[0];
 #pragma warning restore 0649
         }
-        public string AppVersion {
-            get {
-                // The channel is derived from the build's own version, not the
-                // update channel pref, which the user may have switched to a
-                // different one.
-                Version? version = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version;
-                string suffix = Core.Util.ReleaseChannel.FromVersion(version) is { } channel
-                    ? $" ({channel})" : string.Empty;
-                return $"v{version}{suffix}";
-            }
+
+        /// <summary>An update we can offer: one of our releases, newer than this build.</summary>
+        public class UpdatePlan {
+            /// <summary>Version of the release, e.g. "0.1.565-fork.2".</summary>
+            public string version = string.Empty;
+            /// <summary>Our release page - where Update sends the user when the release has no appcast.</summary>
+            public string releaseUrl = string.Empty;
+            /// <summary>
+            /// Appcast of the release, when it ships one. Only then can Sparkle download and
+            /// swap the files in place.
+            /// </summary>
+            public string? appcastUrl;
         }
+
+        /// <summary>The outcome of one update check.</summary>
+        public class UpdateCheck {
+            /// <summary>The update to offer, or null when this build is up to date.</summary>
+            public UpdatePlan? plan;
+            /// <summary>True when the check itself failed; then we know nothing about updates.</summary>
+            public bool failed;
+        }
+
+        public string AppVersion => $"v{Core.Util.AppVersion.WithChannel}";
         public bool IsDarkMode => ThemeManager.IsDarkMode;
         [Reactive] public partial string UpdaterStatus { get; set; }
         [Reactive] public partial bool UpdateAvailable { get; set; }
@@ -56,6 +68,7 @@ namespace OpenUtau.App.ViewModels {
 
         private SparkleUpdater? sparkle;
         private UpdateInfo? updateInfo;
+        private UpdatePlan? plan;
         // Bumped on every check so that a check still in flight when the user
         // switches channel does not overwrite the result of the newer one.
         private int checkGeneration;
@@ -81,33 +94,52 @@ namespace OpenUtau.App.ViewModels {
             Init();
         }
 
-        public static async Task<SparkleUpdater?> NewUpdaterAsync() {
+        /// <summary>
+        /// Checks our own repository for a release newer than this build.
+        ///
+        /// Our releases live in <see cref="VersionComparison.RepoSlug"/> and are tagged
+        /// <c>v&lt;core&gt;-fork.&lt;n&gt;</c>; upstream's releases are deliberately never
+        /// consulted, and <see cref="VersionComparison.IsNewerRelease"/> decides whether
+        /// what came back is an update for a fork build at all.
+        /// </summary>
+        public static async Task<UpdateCheck> CheckAsync() {
+            List<GithubRelease> releases;
             try {
-                var release = await SelectRelease();
-                if (release == null) {
-                    Log.Error("No updatable release found.");
-                    return null;
-                }
-                Log.Information($"Checking update at: {release.html_url}");
-                var appcast = SelectAppcast(release);
-                if (appcast == null) {
-                    Log.Error("No updatable appcast found.");
-                    return null;
-                }
-                Log.Information($"Checking appcast: {appcast.browser_download_url}");
-                return new ZipUpdater(appcast.browser_download_url, new Ed25519Checker(SecurityMode.Unsafe)) {
-                    UIFactory = null,
-                    CheckServerFileName = false,
-                    RelaunchAfterUpdate = true,
-                    RelaunchAfterUpdateCommandPrefix = OS.IsLinux() ? "./" : string.Empty,
-                    AppCastHandler = new XMLAppCast() {
-                        AppCastFilter = new DowngradableFilter()
-                    },
-                };
+                releases = await FetchReleasesAsync();
             } catch (Exception e) {
-                Log.Error(e, "Failed to select appcast to update.");
-                return null;
+                Log.Error(e, "Failed to check for updates.");
+                return new UpdateCheck { failed = true };
             }
+            var release = SelectNewestRelease(releases, Preferences.Default.Channel, Core.Util.AppVersion.Display);
+            return new UpdateCheck { plan = release == null ? null : PlanRelease(release) };
+        }
+
+        /// <summary>
+        /// Whether the startup check should show the updater dialog, i.e. whether there
+        /// is an update this user has not skipped. Never true for a build whose version
+        /// cannot be read, or when the check itself failed.
+        /// </summary>
+        public static async Task<bool> IsUpdateAvailableAsync() {
+            var check = await CheckAsync();
+            if (check.failed || check.plan == null) {
+                return false;
+            }
+            // SkipUpdate is stored as "<channel>:<version>". The bare
+            // form without a channel prefix is the legacy format.
+            string version = check.plan.version;
+            return Preferences.Default.SkipUpdate != version &&
+                Preferences.Default.SkipUpdate != $"{Preferences.Default.Channel}:{version}";
+        }
+
+        static async Task<List<GithubRelease>> FetchReleasesAsync() {
+            using var client = new HttpClient();
+            client.DefaultRequestHeaders.Add("Accept", "application/json");
+            client.DefaultRequestHeaders.Add("User-Agent", "Other");
+            client.Timeout = TimeSpan.FromSeconds(30);
+            using var response = await client.GetAsync(VersionComparison.ReleasesApiUrl);
+            response.EnsureSuccessStatusCode();
+            string respBody = await response.Content.ReadAsStringAsync();
+            return Json.Deserialize<List<GithubRelease>>(respBody) ?? new List<GithubRelease>();
         }
 
         // Channel filter for GitHub releases. Alpha builds are published as
@@ -125,24 +157,63 @@ namespace OpenUtau.App.ViewModels {
             };
         }
 
-        static async Task<GithubRelease?> SelectRelease() {
-            using var client = new HttpClient();
-            client.DefaultRequestHeaders.Add("Accept", "application/json");
-            client.DefaultRequestHeaders.Add("User-Agent", "Other");
-            client.Timeout = TimeSpan.FromSeconds(30);
-            // per_page=100: with frequent alpha releases, the default 30-item
-            // page could push the release of the current channel off-page.
-            using var resposne = await client.GetAsync("https://api.github.com/repos/stakira/OpenUtau/releases?per_page=100");
-            resposne.EnsureSuccessStatusCode();
-            string respBody = await resposne.Content.ReadAsStringAsync();
-            var releases = Json.Deserialize<List<GithubRelease>>(respBody);
-            if (releases == null) {
+        /// <summary>
+        /// Whether a release could update this build at all. Upstream splits its releases
+        /// over the stable / beta / alpha channels and the channel preference picks between
+        /// them; our fork publishes a single stream of <c>v&lt;core&gt;-fork.&lt;n&gt;</c>
+        /// releases, so a fork release is a candidate on every channel.
+        /// </summary>
+        public static bool IsCandidateRelease(GithubRelease release, string channel) {
+            if (release.draft) {
+                return false;
+            }
+            return VersionComparison.IsForkRelease(release.tag_name) || IsReleaseForChannel(release, channel);
+        }
+
+        /// <summary>
+        /// Newest release that is really newer than <paramref name="buildVersion"/>, or null
+        /// when there is nothing to offer. No network and no preferences, so it can be tested
+        /// on its own.
+        /// </summary>
+        public static GithubRelease? SelectNewestRelease(
+            List<GithubRelease> releases, string channel, string? buildVersion) {
+            return releases
+                .Where(r => IsCandidateRelease(r, channel)
+                    && VersionComparison.IsNewerRelease(r.tag_name, buildVersion))
+                .Select(r => (release: r, version: VersionComparison.Parse(r.tag_name)))
+                .OrderByDescending(x => x.version.Core)
+                .ThenByDescending(x => x.version.ForkCounter)
+                .ThenByDescending(x => x.release.id)
+                .Select(x => x.release)
+                .FirstOrDefault();
+        }
+
+        /// <summary>
+        /// What to offer for a release: its version, our release page, and its appcast when it
+        /// has one. Null when there is nothing to point the user at.
+        /// </summary>
+        public static UpdatePlan? PlanRelease(GithubRelease release) {
+            string? appcastUrl = SelectAppcast(release)?.browser_download_url;
+            if (appcastUrl == null && string.IsNullOrEmpty(release.html_url)) {
                 return null;
             }
-            return releases
-                .Where(r => IsReleaseForChannel(r, Preferences.Default.Channel))
-                .OrderByDescending(r => r.id)
-                .FirstOrDefault();
+            return new UpdatePlan {
+                version = VersionComparison.StripTagPrefix(release.tag_name),
+                releaseUrl = release.html_url,
+                appcastUrl = appcastUrl,
+            };
+        }
+
+        public static SparkleUpdater NewSparkleUpdater(string appcastUrl) {
+            return new ZipUpdater(appcastUrl, new Ed25519Checker(SecurityMode.Unsafe)) {
+                UIFactory = null,
+                CheckServerFileName = false,
+                RelaunchAfterUpdate = true,
+                RelaunchAfterUpdateCommandPrefix = OS.IsLinux() ? "./" : string.Empty,
+                AppCastHandler = new XMLAppCast() {
+                    AppCastFilter = new DowngradableFilter()
+                },
+            };
         }
 
         static GithubReleaseAsset? SelectAppcast(GithubRelease release) {
@@ -159,10 +230,27 @@ namespace OpenUtau.App.ViewModels {
             sparkle?.Dispose();
             sparkle = null;
             updateInfo = null;
+            plan = null;
             UpdateAvailable = false;
             UpdateButtonFontWeight = FontWeight.Normal;
             UpdaterStatus = ThemeManager.GetString("updater.status.checking");
-            var newSparkle = await NewUpdaterAsync();
+            var check = await CheckAsync();
+            if (generation != checkGeneration) {
+                return;
+            }
+            if (check.failed) {
+                UpdaterStatus = ThemeManager.GetString("updater.status.unknown");
+                return;
+            }
+            plan = check.plan;
+            if (plan == null) {
+                UpdaterStatus = ThemeManager.GetString("updater.status.notavailable");
+                return;
+            }
+            // Our own comparison decides that there is an update; the appcast only says
+            // whether Sparkle can install it silently, and Sparkle cannot make sense of a
+            // fork version string ("0.1.565-fork.2" is not a System.Version).
+            var newSparkle = plan.appcastUrl == null ? null : NewSparkleUpdater(plan.appcastUrl);
             var newInfo = newSparkle == null ? null : await newSparkle.CheckForUpdatesQuietly();
             if (generation != checkGeneration) {
                 newSparkle?.Dispose();
@@ -170,36 +258,30 @@ namespace OpenUtau.App.ViewModels {
             }
             sparkle = newSparkle;
             updateInfo = newInfo;
-            if (updateInfo == null) {
-                UpdaterStatus = ThemeManager.GetString("updater.status.unknown");
-                return;
-            }
-            switch (updateInfo.Status) {
-                case UpdateStatus.UpdateAvailable:
-                case UpdateStatus.UserSkipped:
-                    UpdaterStatus = string.Format(ThemeManager.GetString("updater.status.available"), updateInfo.Updates[0].Version);
-                    UpdateAvailable = true;
-                    UpdateButtonFontWeight = FontWeight.Bold;
-                    break;
-                case UpdateStatus.UpdateNotAvailable:
-                    UpdaterStatus = ThemeManager.GetString("updater.status.notavailable");
-                    break;
-                case UpdateStatus.CouldNotDetermine:
-                    UpdaterStatus = ThemeManager.GetString("updater.status.unknown");
-                    break;
-            }
+            UpdateAvailable = true;
+            UpdateButtonFontWeight = FontWeight.Bold;
+            UpdaterStatus = string.Format(ThemeManager.GetString("updater.status.available"), plan.version);
         }
 
         public void OnGithub() {
             try {
-                OS.OpenWeb("https://github.com/stakira/OpenUtau/wiki");
+                OS.OpenWeb(VersionComparison.RepoUrl);
             } catch (Exception e) {
                 DocManager.Inst.ExecuteCmd(new ErrorMessageNotification(e));
             }
         }
 
         public async void OnUpdate() {
+            if (plan == null) {
+                return;
+            }
             if (sparkle == null || updateInfo == null || updateInfo.Updates.Count == 0) {
+                // Our releases ship a plain zip with no appcast for Sparkle to install, so
+                // send the user to our release page instead. The download-and-swap path
+                // below is unchanged for releases that do carry an appcast.
+                UpdateAvailable = false;
+                UpdateAccepted = true;
+                OpenReleasePage();
                 return;
             }
             UpdateAvailable = false;
@@ -235,15 +317,25 @@ namespace OpenUtau.App.ViewModels {
             await sparkle.InitAndBeginDownload(updateInfo.Updates.First());
         }
 
+        void OpenReleasePage() {
+            try {
+                string url = plan?.releaseUrl ?? VersionComparison.RepoUrl;
+                if (string.IsNullOrEmpty(url)) {
+                    url = VersionComparison.RepoUrl;
+                }
+                Log.Information($"Opening release page: {url}");
+                OS.OpenWeb(url);
+            } catch (Exception e) {
+                DocManager.Inst.ExecuteCmd(new ErrorMessageNotification(e));
+            }
+        }
+
         public void OnClosing() {
-            if (!UpdateAccepted && updateInfo != null &&
-                (updateInfo.Status == UpdateStatus.UpdateAvailable ||
-                updateInfo.Status == UpdateStatus.UserSkipped) &&
-                updateInfo.Updates.Count > 0) {
-                Log.Information($"Skipping update {updateInfo.Updates[0].Version}");
+            if (!UpdateAccepted && UpdateAvailable && plan != null) {
+                Log.Information($"Skipping update {plan.version}");
                 // Skip is per-channel so that skipping e.g. an alpha build does
                 // not suppress the same-target beta or stable release.
-                Preferences.Default.SkipUpdate = $"{Preferences.Default.Channel}:{updateInfo.Updates[0].Version}";
+                Preferences.Default.SkipUpdate = $"{Preferences.Default.Channel}:{plan.version}";
                 Preferences.Save();
             }
         }
@@ -313,7 +405,7 @@ namespace OpenUtau.App.ViewModels {
                             if [ $COUNTER -eq 90 ]
                             then
                                 exit -1;
-                            fi;
+                            fi
                         done;
 
                         mv -f "{downloadFilePath}" "{PathManager.Inst.AppImagePath}"

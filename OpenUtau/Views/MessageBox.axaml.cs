@@ -86,7 +86,7 @@ namespace OpenUtau.App.Views {
             }
             builder.AppendLine();
             builder.AppendLine();
-            builder.AppendLine(System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version?.ToString() ?? "Unknown Version");
+            builder.AppendLine(OpenUtau.Core.Util.AppVersion.Display);
 
             return Show(parent, text, title, MessageBoxButtons.OkCopy, builder.ToString());
 

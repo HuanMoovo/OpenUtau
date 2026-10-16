@@ -2,9 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia.Controls;
-using NetSparkleUpdater.Enums;
 using OpenUtau.App.ViewModels;
-using OpenUtau.Core.Util;
 using Serilog;
 
 namespace OpenUtau.App.Views {
@@ -26,24 +24,11 @@ namespace OpenUtau.App.Views {
             if (!CheckForUpdateEnabled) {
                 return;
             }
-            Task.Run(async () => {
-                using var updater = await UpdaterViewModel.NewUpdaterAsync();
-                if (updater == null) {
-                    return false;
-                }
-                var info = await updater.CheckForUpdatesQuietly(true);
-                if (info.Status == UpdateStatus.UpdateAvailable) {
-                    // SkipUpdate is stored as "<channel>:<version>". The bare
-                    // form without a channel prefix is the legacy format.
-                    string version = info.Updates[0].Version.ToString();
-                    if (Preferences.Default.SkipUpdate == version ||
-                        Preferences.Default.SkipUpdate == $"{Preferences.Default.Channel}:{version}") {
-                        return false;
-                    }
-                    return true;
-                }
-                return false;
-            }).ContinueWith(t => {
+            // What counts as an update is decided by our own release list and version
+            // comparison - a build that cannot read its own version, or that is not older
+            // than any of our releases, never gets here. Sparkle is only asked whether it
+            // can install the update, which the dialog does when it opens.
+            Task.Run(async () => await UpdaterViewModel.IsUpdateAvailableAsync()).ContinueWith(t => {
                 if (t.IsCompletedSuccessfully && t.Result) {
                     var dialog = new UpdaterDialog();
                     dialog.ViewModel.CloseApplication = closeApplication;

@@ -1,0 +1,30 @@
+[
+  {
+    "id": 414815203,
+    "tag_name": "v0.1.565-fork.2",
+    "name": "OpenUtau fork 0.1.565 - \u73b0\u4ee3\u5316\u754c\u9762 / \u6a21\u578b\u56fe / BUG \u4fee\u590d (rev.2)",
+    "draft": false,
+    "prerelease": false,
+    "html_url": "https://github.com/HuanMoovo/OpenUtau/releases/tag/v0.1.565-fork.2",
+    "assets": [
+      {
+        "name": "OpenUtau-fork-win-x64-v2.zip",
+        "browser_download_url": "https://github.com/HuanMoovo/OpenUtau/releases/download/v0.1.565-fork.2/OpenUtau-fork-win-x64-v2.zip"
+      }
+    ]
+  },
+  {
+    "id": 414629765,
+    "tag_name": "v0.1.565-fork.1",
+    "name": "OpenUtau fork 0.1.565 - \u9ed1\u7070\u754c\u9762 / \u6027\u80fd / \u7acb\u7ed8 / BUG \u4fee\u590d",
+    "draft": false,
+    "prerelease": false,
+    "html_url": "https://github.com/HuanMoovo/OpenUtau/releases/tag/v0.1.565-fork.1",
+    "assets": [
+      {
+        "name": "OpenUtau-fork-win-x64.zip",
+        "browser_download_url": "https://github.com/HuanMoovo/OpenUtau/releases/download/v0.1.565-fork.1/OpenUtau-fork-win-x64.zip"
+      }
+    ]
+  }
+]

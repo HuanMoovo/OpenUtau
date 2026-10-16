@@ -10,7 +10,20 @@
     <SatelliteResourceLanguages>none</SatelliteResourceLanguages>
     <Nullable>enable</Nullable>
     <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
-    <Version>0.0.0</Version>
+    <!-- Version of this fork. <Version> is the upstream core the fork tracks and is
+         what CI rewrites at release time (.github/workflows/build.yml runs
+         justalemon/VersionPatcher, whose regex only matches a plain numeric
+         <Version>); <ForkRelease> is our own release counter. The two are composed
+         into the informational version, which is what the app reports and what the
+         updater compares - keep <Version> numeric or the release pipeline stops
+         matching. Bumping the fork counter is a one-line change here, plus a tag
+         v<Version>-fork.<ForkRelease> on the release. -->
+    <Version>0.1.565</Version>
+    <ForkRelease>2</ForkRelease>
+    <InformationalVersion>$(Version)-fork.$(ForkRelease)</InformationalVersion>
+    <!-- Keep the reported version exactly "<core>-fork.<n>"; a "+<commit>" suffix would
+         only be noise in the window title and the updater dialog. -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
     <ApplicationIcon>Assets\open-utau.ico</ApplicationIcon>
     <PublishReadyToRun>true</PublishReadyToRun>
     <DebugType>embedded</DebugType>
@@ -20,8 +33,11 @@
     <CFBundleName>OpenUtau</CFBundleName>
     <CFBundleDisplayName>OpenUtau</CFBundleDisplayName>
     <CFBundleIdentifier>com.stakira.openutau</CFBundleIdentifier>
-    <CFBundleVersion>0.0.0</CFBundleVersion>
-    <CFBundleShortVersionString>0.0.0</CFBundleShortVersionString>
+    <!-- Follow <Version> so a local macOS bundle reports the version it was built from
+         and CI's patch of <Version> still lands; the fork counter stays out of these,
+         which Apple wants numeric. -->
+    <CFBundleVersion>$(Version)</CFBundleVersion>
+    <CFBundleShortVersionString>$(Version)</CFBundleShortVersionString>
     <CFBundlePackageType>APPL</CFBundlePackageType>
     <CFBundleSignature>????</CFBundleSignature>
     <CFBundleExecutable>OpenUtau</CFBundleExecutable>

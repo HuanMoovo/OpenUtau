@@ -98,14 +98,7 @@ namespace OpenUtau.App.ViewModels {
 
         [Reactive] public partial string ClearCacheHeader { get; set; }
         public bool ProjectSaved => !string.IsNullOrEmpty(DocManager.Inst.Project.FilePath) && DocManager.Inst.Project.Saved;
-        public string AppVersion {
-            get {
-                Version? version = System.Reflection.Assembly.GetEntryAssembly()?.GetName().Version;
-                string suffix = Core.Util.ReleaseChannel.FromVersion(version) is { } channel
-                    ? $" ({channel})" : string.Empty;
-                return $"OpenUtau v{version}{suffix}";
-            }
-        }
+        public string AppVersion => $"OpenUtau v{Core.Util.AppVersion.WithChannel}";
         [Reactive] public partial double Progress { get; set; }
         [Reactive] public partial string ProgressText { get; set; }
         [Reactive] public partial bool ShowPianoRoll { get; set; }

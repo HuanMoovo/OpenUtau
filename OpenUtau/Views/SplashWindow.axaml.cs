@@ -16,6 +16,9 @@ namespace OpenUtau.App.Views {
     public partial class SplashWindow : Window, IDisposable {
         public SplashWindow() {
             InitializeComponent();
+            // Show which build this is while it loads; the main window repeats it in its title.
+            VersionText.Text = $"v{Core.Util.AppVersion.Display}";
+            Title = $"OpenUtau v{Core.Util.AppVersion.Display}";
             UpdateLogo();
             MessageBus.Current.Listen<ThemeChangedEvent>()
                 .Subscribe(_ => UpdateLogo())
