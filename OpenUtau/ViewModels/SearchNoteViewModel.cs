@@ -136,8 +136,10 @@ namespace OpenUtau.App.ViewModels {
         public void OnNext(UCommand cmd, bool isUndo) {
             if (cmd is UNotification notif) {
                 if (cmd is LoadPartNotification) {
+                    // Refresh the result count for the newly opened part only. Jumping to a
+                    // hit here would replace the user's selection and scroll the roll to it
+                    // every time a part is opened (#2469); Enter still advances.
                     Search();
-                    Next();
                 }
             }
         }
