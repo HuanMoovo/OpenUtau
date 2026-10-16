@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Runtime.InteropServices;
 using K4os.Hash.xxHash;
 using Microsoft.ML.OnnxRuntime;
 using Microsoft.ML.OnnxRuntime.Tensors;
@@ -20,14 +21,23 @@ namespace OpenUtau.Core.DiffSinger {
 
         public DiffSingerCache(ulong identifier, ICollection<NamedOnnxValue> inputs) {
             using var stream = new MemoryStream();
+            byte[] buffer;
+            int length;
             using (var writer = new BinaryWriter(stream)) {
                 writer.Write(identifier);
                 foreach (var onnxValue in inputs.OrderBy(v => v.Name, StringComparer.InvariantCulture)) {
                     SerializeNamedOnnxValue(writer, onnxValue);
                 }
+                //Disposing the BinaryWriter closes the stream, so take the buffer and the written
+                //length while it is still open.
+                writer.Flush();
+                buffer = stream.GetBuffer();
+                length = (int)stream.Length;
             }
 
-            hash = XXH64.DigestOf(stream.ToArray());
+            //Hash the written bytes where they are: [0, length) of the stream's own buffer is
+            //exactly what stream.ToArray() used to copy out and hash.
+            hash = XXH64.DigestOf(new ReadOnlySpan<byte>(buffer, 0, length));
             filename = $"ds-{hash:x16}.tensorcache";
         }
 
@@ -130,7 +140,7 @@ namespace OpenUtau.Core.DiffSinger {
                 }
                 case TensorElementType.String: {
                     var tensor = namedOnnxValue.AsTensor<string>();
-                    SerializeTensor(writer, tensor);
+                    SerializeStringTensor(writer, tensor);
                     break;
                 }
                 case TensorElementType.Bool: {
@@ -171,10 +181,40 @@ namespace OpenUtau.Core.DiffSinger {
             }
         }
 
-        private static void SerializeTensor<T>(BinaryWriter writer, Tensor<T> tensor) {
+        private static void SerializeTensor<T>(BinaryWriter writer, Tensor<T> tensor) where T : struct {
             if (tensor.IsReversedStride) {
                 throw new NotSupportedException("[TensorCache] Tensors in reversed strides are not supported.");
             }
+            WriteTensorHeader(writer, tensor);
+            // numeric tensor
+            // data
+            var size = (int)tensor.Length;
+            if (tensor is DenseTensor<T> dense && dense.Buffer.Length == size) {
+                //Contiguous payload: stream the tensor's own backing memory instead of copying it
+                //tensor -> T[] -> byte[] on the way to the stream. A tensor whose backing memory is
+                //not exactly its elements (nothing but DenseTensor gets here today) keeps the
+                //copying path, which yields the same bytes.
+                writer.Write(MemoryMarshal.AsBytes(dense.Buffer.Span));
+            } else {
+                var data = new byte[size * tensor.GetTypeInfo().TypeSize];
+                Buffer.BlockCopy(tensor.ToArray(), 0, data, 0, data.Length);
+                writer.Write(data);
+            }
+        }
+
+        private static void SerializeStringTensor(BinaryWriter writer, Tensor<string> tensor) {
+            if (tensor.IsReversedStride) {
+                throw new NotSupportedException("[TensorCache] Tensors in reversed strides are not supported.");
+            }
+            WriteTensorHeader(writer, tensor);
+            // string tensor
+            // data
+            foreach (var element in tensor.ToArray()) {
+                writer.Write(element!.ToString());
+            }
+        }
+
+        private static void WriteTensorHeader<T>(BinaryWriter writer, Tensor<T> tensor) {
             // rank
             writer.Write(tensor.Rank);
             // shape
@@ -182,21 +222,7 @@ namespace OpenUtau.Core.DiffSinger {
                 writer.Write(dim);
             }
             // size
-            var size = (int)tensor.Length;
-            writer.Write(size);
-            if (typeof(T) == typeof(string)) {
-                // string tensor
-                // data
-                foreach (var element in tensor.ToArray()) {
-                    writer.Write(element!.ToString());
-                }
-            } else {
-                // numeric tensor
-                // data
-                var data = new byte[size * tensor.GetTypeInfo().TypeSize];
-                Buffer.BlockCopy(tensor.ToArray(), 0, data, 0, data.Length);
-                writer.Write(data);
-            }
+            writer.Write((int)tensor.Length);
         }
 
         private static NamedOnnxValue DeserializeNamedOnnxValue(BinaryReader reader) {

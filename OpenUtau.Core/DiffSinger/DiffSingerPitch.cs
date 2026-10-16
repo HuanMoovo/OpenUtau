@@ -194,6 +194,9 @@ namespace OpenUtau.Core.DiffSinger
             noteRestList.Add(true);
             paddedToRealNoteIndex.Add(0);
             double prevNoteEndMs = phrase.notes[0].positionMs;
+            //Cursor into phrase.phones for the rest-status scan below; see the comment there.
+            int phoneCursor = 0;
+            int cursorNotePosition = int.MinValue;
             for (int realIdx = 0; realIdx < phrase.notes.Length; realIdx++) {
                 var note = phrase.notes[realIdx];
                 double gapMs = note.positionMs - prevNoteEndMs;
@@ -211,12 +214,33 @@ namespace OpenUtau.Core.DiffSinger
                 if (note.lyric.StartsWith("+")) {
                     noteRestList.Add(noteRestList[^1]);
                 } else {
-                    var phs = phrase.phones
-                        .SkipWhile(ph => ph.end <= note.position + 1)
-                        .TakeWhile(ph => ph.position < note.end - 1)
-                        .ToArray();
-                    bool isRest = phs.Length == 0
-                        || phs.All(ph => ph.phoneme == "AP" || ph.phoneme == "SP" || !g2p.IsVowel(ph.phoneme));
+                    //The phone window is [first phone with end > note.position + 1, first phone with
+                    //position >= note.end - 1): the very same subsequence SkipWhile/TakeWhile used to
+                    //materialize, scanned with a monotone cursor instead of restarting the scan for
+                    //every note. That is exact as long as note.position never decreases: every phone
+                    //the cursor walked past has end <= (previous note.position) + 1, hence also
+                    //end <= (this note.position) + 1, so it would be skipped again. If a caller ever
+                    //hands us out-of-order notes, start the scan over rather than assume.
+                    if (note.position < cursorNotePosition) {
+                        phoneCursor = 0;
+                    }
+                    cursorNotePosition = note.position;
+                    while (phoneCursor < phrase.phones.Length
+                        && phrase.phones[phoneCursor].end <= note.position + 1) {
+                        phoneCursor++;
+                    }
+                    //TakeWhile(position < note.end - 1) stops the window, and All() only fails on a
+                    //vowel that is neither AP nor SP, so scan in the same order and stop there.
+                    bool isRest = true;
+                    for (int pi = phoneCursor;
+                        pi < phrase.phones.Length && phrase.phones[pi].position < note.end - 1;
+                        pi++) {
+                        var phoneme = phrase.phones[pi].phoneme;
+                        if (phoneme != "AP" && phoneme != "SP" && g2p.IsVowel(phoneme)) {
+                            isRest = false;
+                            break;
+                        }
+                    }
                     noteRestList.Add(isRest);
                 }
                 prevNoteEndMs = note.positionMs + note.durationMs;
