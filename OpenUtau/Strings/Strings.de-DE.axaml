@@ -608,7 +608,6 @@ Warnung: Diese Option entfernt alle benutzerdefinierten Einstellungen.</system:S
   <!--<system:String x:Key="prefs.appearance.playbacknotehighlight">Highlight notes on playback</system:String>-->
   <system:String x:Key="prefs.appearance.showghostnotes">Die Noten anderer Tonspuren im Piano-Modus anzeigen.</system:String>
   <system:String x:Key="prefs.appearance.showicon">Icon im Piano-Modus anzeigen</system:String>
-  <system:String x:Key="prefs.appearance.showportrait">Portrait im Piano-Modus anzeigen</system:String>
   <system:String x:Key="prefs.appearance.sortorder">Sänger Sortierreihenfolge</system:String>
   <system:String x:Key="prefs.appearance.theme">Aussehen</system:String>
   <system:String x:Key="prefs.appearance.theme.dark">Dunkel</system:String>

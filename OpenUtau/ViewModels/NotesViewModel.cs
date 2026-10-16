@@ -91,8 +91,6 @@ namespace OpenUtau.App.ViewModels {
         [Reactive] public partial double ExpHeightMax { get; set; }
         [Reactive] public partial UVoicePart? Part { get; set; }
         [Reactive] public partial Bitmap? Avatar { get; set; }
-        [Reactive] public partial Bitmap? Portrait { get; set; }
-        [Reactive] public partial IBrush? PortraitMask { get; set; }
         [Reactive] public partial string WindowTitle { get; set; } = "Piano Roll";
         [Reactive] public partial SolidColorBrush TrackAccentColor { get; set; } = ThemeManager.GetTrackColor("Blue").AccentColor;
         public double ViewportTicks => viewportTicks.Value;
@@ -132,16 +130,9 @@ namespace OpenUtau.App.ViewModels {
         bool snapLinesStale = true;
         private int playPosTick;
         private UNote[] playbackNotes = Array.Empty<UNote>();
-        // What the portrait state below refers to: the source path and the height it was built
-        // with. The key is reserved before the decode starts, so overlapping refreshes share
-        // one decode. Opacity only affects PortraitMask, never the bitmap.
-        private string? portraitSource;
-        private int portraitSourceHeight;
-        private int portraitGeneration;
-        // Sources whose image could not be read, so a bank with a missing file is not retried
-        // on every part and note switch.
-        private readonly HashSet<string> failedPortraits = new HashSet<string>();
-        private readonly object portraitLock = new object();
+        // The square singer icon at the corner of the piano roll. It is decoded from the singer's
+        // AvatarData on the UI thread, under this lock.
+        private readonly object avatarLock = new object();
         private int userSnapDiv = -2;
         private int userKey => Project.key;
 
@@ -383,8 +374,8 @@ namespace OpenUtau.App.ViewModels {
                                 LoadPart(Part, Project);
                             }
                             break;
-                        case "Portrait":
-                            LoadPortrait(Part, Project, force: true);
+                        case "Icon":
+                            LoadAvatar(Part, Project);
                             break;
                         case "TrackColor":
                             LoadTrackColor(Part, Project);
@@ -597,47 +588,23 @@ namespace OpenUtau.App.ViewModels {
             Part = part as UVoicePart;
             OnPartModified();
             RebuildPlaybackNoteIndex();
-            LoadPortrait(part, project);
+            LoadAvatar(part, project);
             LoadWindowTitle(part, project);
             LoadTrackColor(part, project);
             UpdateKey();
         }
 
-        //If PortraitHeight is 0, the default behaviour is resizing any image taller than 800px to 800px,
-        //and keeping the sizes of images shorter than 800px unchanged.
-        //If PortraitHeight isn't 0, then the image will be resized to the specified height.
-        private Bitmap ResizePortrait(Bitmap Portrait, int PortraitHeight) {
-            int targetHeight;
-            if (PortraitHeight == 0) {
-                if (Portrait.Size.Height > 800) {
-                    targetHeight = 800;
-                } else {
-                    return Portrait;
-                }
-            } else {
-                targetHeight = PortraitHeight;
-            }
-            int targetWidth = (int)Math.Round(targetHeight * Portrait.Size.Width / Portrait.Size.Height);
-            if (targetWidth == 0) {
-                targetWidth = 1;
-            }
-            return Portrait.CreateScaledBitmap(new PixelSize(targetWidth, targetHeight));
-        }
-
-        // force: the user asked for a portrait refresh (View > Show portrait, or a Preferences
-        // change), so a load that failed earlier is retried once.
-        private void LoadPortrait(UPart? part, UProject? project, bool force = false) {
+        // The square singer icon the piano roll shows in its corner, from the singer's AvatarData.
+        // ShowIcon (View > Show icon) turns it off.
+        private void LoadAvatar(UPart? part, UProject? project) {
             if (part == null || project == null) {
-                lock (portraitLock) {
+                lock (avatarLock) {
                     Avatar = null;
-                    Portrait = null;
-                    portraitSource = null;
-                    portraitSourceHeight = 0;
                 }
                 return;
             }
             var singer = project.tracks[part.trackNo].Singer;
-            lock (portraitLock) {
+            lock (avatarLock) {
                 // Clear the property before disposing: the avatar Image binds to it, and it must not
                 // be left holding a bitmap that has been disposed.
                 var replacedAvatar = Avatar;
@@ -656,88 +623,9 @@ namespace OpenUtau.App.ViewModels {
                     }
                 }
             }
-            if (singer == null || string.IsNullOrEmpty(singer.Portrait) || !Preferences.Default.ShowPortrait) {
-                lock (portraitLock) {
-                    Portrait = null;
-                    portraitSource = null;
-                    portraitSourceHeight = 0;
-                }
-                return;
-            }
-            // Editor-wide overrides; 0 means "use the voicebank's value".
-            int effectiveHeight = Preferences.Default.PortraitHeight != 0
-                ? Preferences.Default.PortraitHeight
-                : singer.PortraitHeight;
-            float effectiveOpacity = Preferences.Default.PortraitOpacity != 0
-                ? Preferences.Default.PortraitOpacity
-                : singer.PortraitOpacity;
-            string source = singer.Portrait;
-            bool load;
-            int generation = 0;
-            lock (portraitLock) {
-                // The load runs off the UI thread and takes a while, so the source is reserved
-                // here, before it starts: the refreshes that arrive meanwhile (every part and
-                // note switch makes one) find it already handled instead of decoding it twice.
-                load = portraitSource != source || portraitSourceHeight != effectiveHeight;
-                if (load) {
-                    var replaced = Portrait;
-                    Portrait = null;
-                    replaced?.Dispose();
-                    portraitSource = source;
-                    portraitSourceHeight = effectiveHeight;
-                    generation = ++portraitGeneration;
-                }
-            }
-            // The mask only carries the opacity, so it is refreshed on every call and can never
-            // be left stale or null while a bitmap is showing.
-            PortraitMask = new SolidColorBrush(Avalonia.Media.Colors.White, effectiveOpacity);
-            if (!load) {
-                return;
-            }
-            lock (portraitLock) {
-                if (!force && failedPortraits.Contains(source)) {
-                    return;
-                }
-            }
-            Task.Run(() => {
-                Bitmap? loaded = null;
-                try {
-                    var data = singer.LoadPortrait();
-                    if (data != null) {
-                        using (var stream = new MemoryStream(data)) {
-                            var decoded = new Bitmap(stream);
-                            try {
-                                loaded = ResizePortrait(decoded, effectiveHeight);
-                            } finally {
-                                // ResizePortrait hands back its argument when no resizing is
-                                // needed; otherwise the full-size decode is not used again.
-                                if (!ReferenceEquals(loaded, decoded)) {
-                                    decoded.Dispose();
-                                }
-                            }
-                        }
-                    }
-                } catch (Exception e) {
-                    Log.Error(e, $"Failed to load Portrait {source}");
-                }
-                lock (portraitLock) {
-                    if (generation != portraitGeneration) {
-                        // A newer refresh replaced this load while it ran. Its bitmap must be
-                        // neither shown nor leaked.
-                        loaded?.Dispose();
-                        return;
-                    }
-                    if (loaded == null) {
-                        failedPortraits.Add(source);
-                        Portrait = null;
-                        portraitSource = null;
-                        portraitSourceHeight = 0;
-                        return;
-                    }
-                    Portrait = loaded;
-                }
-            });
         }
+
+
         private void LoadWindowTitle(UPart? part, UProject? project) {
             if (part == null || project == null) {
                 WindowTitle = "Piano Roll";
@@ -763,7 +651,7 @@ namespace OpenUtau.App.ViewModels {
             DeselectNotes();
             Part = null;
             playbackNotes = Array.Empty<UNote>();
-            LoadPortrait(null, null);
+            LoadAvatar(null, null);
             LoadWindowTitle(null, null);
         }
 
@@ -1317,7 +1205,6 @@ namespace OpenUtau.App.ViewModels {
                     PrimaryKeyNotSupported = !IsExpSupported(PrimaryKey);
                 } else if (cmd is LoadProjectNotification) {
                     UnloadPart();
-                    LoadPortrait(null, null);
                     PrimaryKeyNotSupported = !IsExpSupported(PrimaryKey);
                     InvalidateSnapLines();
                 } else if (cmd is SelectExpressionNotification selectExp) {
@@ -1340,7 +1227,7 @@ namespace OpenUtau.App.ViewModels {
                     }
                 } else if (cmd is ValidateProjectNotification || cmd is SingersRefreshedNotification) {
                     if (Part != null) {
-                        LoadPortrait(Part, Project);
+                        LoadAvatar(Part, Project);
                     }
                     OnPartModified();
                     RebuildPlaybackNoteIndex();
@@ -1413,7 +1300,7 @@ namespace OpenUtau.App.ViewModels {
                 MessageBus.Current.SendMessage(new NotesRefreshEvent());
                 if (cmd is TrackChangeSingerCommand trackChangeSinger) {
                     if (Part != null && trackChangeSinger.track.TrackNo == Part.trackNo) {
-                        LoadPortrait(Part, Project);
+                        LoadAvatar(Part, Project);
                     }
                 }
                 UpdateIsDiffSinger();

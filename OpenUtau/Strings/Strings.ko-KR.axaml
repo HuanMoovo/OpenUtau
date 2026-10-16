@@ -608,7 +608,6 @@ OpenUtau(오픈우타우)는 세련된 사용자 경험과 유연한 음운 지�
   <!--<system:String x:Key="prefs.appearance.playbacknotehighlight">Highlight notes on playback</system:String>-->
   <system:String x:Key="prefs.appearance.showghostnotes">피아노 롤에 다른 트랙의 노트 표시</system:String>
   <system:String x:Key="prefs.appearance.showicon">피아노 롤에 가수 아이콘 표시</system:String>
-  <system:String x:Key="prefs.appearance.showportrait">피아노 롤에 가수 스탠딩 표시</system:String>
   <system:String x:Key="prefs.appearance.sortorder">가수 이름 표시 언어</system:String>
   <system:String x:Key="prefs.appearance.theme">테마</system:String>
   <system:String x:Key="prefs.appearance.theme.dark">다크</system:String>

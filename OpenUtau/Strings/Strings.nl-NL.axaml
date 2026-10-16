@@ -607,7 +607,6 @@ Waarschuwing: deze optie verwijdert aangepaste voorinstellingen.</system:String>
   <!--<system:String x:Key="prefs.appearance.playbacknotehighlight">Highlight notes on playback</system:String>-->
   <system:String x:Key="prefs.appearance.showghostnotes">Noten van andere tracks weergeven op pianorol</system:String>
   <system:String x:Key="prefs.appearance.showicon">Toon icoon op pianorol</system:String>
-  <system:String x:Key="prefs.appearance.showportrait">Toon portret op pianorol</system:String>
   <system:String x:Key="prefs.appearance.sortorder">Zangernaam weergavetaal</system:String>
   <system:String x:Key="prefs.appearance.theme">Thema</system:String>
   <system:String x:Key="prefs.appearance.theme.dark">Donker</system:String>

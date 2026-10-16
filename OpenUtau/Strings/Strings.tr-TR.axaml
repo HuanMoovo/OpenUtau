@@ -607,7 +607,6 @@ Uyarı: Bu seçenek özel önayarları kaldırır.</system:String>
   <!--<system:String x:Key="prefs.appearance.playbacknotehighlight">Highlight notes on playback</system:String>-->
   <system:String x:Key="prefs.appearance.showghostnotes">Piyano rulosunda diğer parçaların notalarını göster</system:String>
   <system:String x:Key="prefs.appearance.showicon">Piyano rulosunda ikon göster</system:String>
-  <system:String x:Key="prefs.appearance.showportrait">Piyano rulosunda portre göster</system:String>
   <system:String x:Key="prefs.appearance.sortorder">Ses bankası adlarının görüntüleme dili</system:String>
   <system:String x:Key="prefs.appearance.theme">Tema</system:String>
   <system:String x:Key="prefs.appearance.theme.dark">Koyu</system:String>

@@ -608,7 +608,6 @@
   <!--<system:String x:Key="prefs.appearance.playbacknotehighlight">Highlight notes on playback</system:String>-->
   <system:String x:Key="prefs.appearance.showghostnotes">Показувати ноти з інших доріжок на фортепіанній доріжці</system:String>
   <system:String x:Key="prefs.appearance.showicon">Показувати іконку на фортепіанній доріжці</system:String>
-  <system:String x:Key="prefs.appearance.showportrait">Показувати портрет на фортепіанній доріжці</system:String>
   <system:String x:Key="prefs.appearance.sortorder">Мова показу імені співака</system:String>
   <system:String x:Key="prefs.appearance.theme">Тема</system:String>
   <system:String x:Key="prefs.appearance.theme.dark">Темна</system:String>

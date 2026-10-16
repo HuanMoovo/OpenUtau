@@ -144,6 +144,9 @@ namespace OpenUtau.App.Controls {
             VolumePanRow.IsVisible = !Compact;
             MixFxButton.IsVisible = !Compact;
             AvatarBorder.IsVisible = !Compact && showAvatar;
+            // The singer's model image: a banner in the inspector panel, a thumbnail in a row.
+            PortraitBannerBorder.IsVisible = !Compact;
+            PortraitThumbBorder.IsVisible = Compact;
         }
 
         void HeaderPointerPressed(object? sender, PointerPressedEventArgs args) {

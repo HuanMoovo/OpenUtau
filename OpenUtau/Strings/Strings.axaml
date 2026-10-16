@@ -770,11 +770,6 @@ Warning: this option removes custom presets.</system:String>
   <system:String x:Key="prefs.appearance.showghostnotes">Show other tracks' notes on piano roll</system:String>
   <system:String x:Key="prefs.appearance.showicon">Show icon on piano roll</system:String>
   <system:String x:Key="prefs.appearance.reduceanimations">Reduce animations</system:String>
-  <system:String x:Key="prefs.appearance.portraitheight">Portrait height</system:String>
-  <system:String x:Key="prefs.appearance.portraitheight.tip">Resizes every portrait to this height in pixels. 0 (the default) keeps the height from each voicebank's character.yaml.</system:String>
-  <system:String x:Key="prefs.appearance.portraitopacity">Portrait opacity</system:String>
-  <system:String x:Key="prefs.appearance.portraitopacity.tip">Opacity of the portrait on the piano roll, from 0 to 1. 0 (the default) keeps the opacity from each voicebank's character.yaml.</system:String>
-  <system:String x:Key="prefs.appearance.showportrait">Show portrait on piano roll</system:String>
   <system:String x:Key="prefs.appearance.sortorder">Singer name display language</system:String>
   <system:String x:Key="prefs.appearance.theme">Theme</system:String>
   <system:String x:Key="prefs.appearance.theme.dark">Dark</system:String>

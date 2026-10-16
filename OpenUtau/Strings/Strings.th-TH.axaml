@@ -609,7 +609,6 @@ Syntax: prefix,suffix</system:String>-->
   <!--<system:String x:Key="prefs.appearance.playbacknotehighlight">Highlight notes on playback</system:String>-->
   <!--<system:String x:Key="prefs.appearance.showghostnotes">Show other tracks' notes on piano roll</system:String>-->
   <!--<system:String x:Key="prefs.appearance.showicon">Show icon on piano roll</system:String>-->
-  <system:String x:Key="prefs.appearance.showportrait">แสดงภาพเหมือนบน Piano roll</system:String>
   <!--<system:String x:Key="prefs.appearance.sortorder">Singer name display language</system:String>-->
   <system:String x:Key="prefs.appearance.theme">ธีม</system:String>
   <system:String x:Key="prefs.appearance.theme.dark">โหมดกลางคืน</system:String>

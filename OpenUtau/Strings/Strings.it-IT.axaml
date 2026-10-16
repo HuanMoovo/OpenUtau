@@ -608,7 +608,6 @@ Tieni premuto Ctrl per selezionare</system:String>
   <!--<system:String x:Key="prefs.appearance.playbacknotehighlight">Highlight notes on playback</system:String>-->
   <system:String x:Key="prefs.appearance.showghostnotes">Mostra note di altre tracce sul piano roll</system:String>
   <system:String x:Key="prefs.appearance.showicon">Mostra icona sul piano roll</system:String>
-  <system:String x:Key="prefs.appearance.showportrait">Mostra immagine del cantante sul piano roll</system:String>
   <system:String x:Key="prefs.appearance.sortorder">Lingua di visualizzazione nomi cantanti</system:String>
   <system:String x:Key="prefs.appearance.theme">Tema</system:String>
   <system:String x:Key="prefs.appearance.theme.dark">Scuro</system:String>

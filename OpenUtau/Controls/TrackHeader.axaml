@@ -115,18 +115,34 @@
   </UserControl.Resources>
   <Border Margin="1,1,1,1" BorderThickness="1" BorderBrush="{Binding HeaderBorderBrush}"
            CornerRadius="2" PointerPressed="HeaderPointerPressed" UseLayoutRounding="False">
-    <Grid ColumnDefinitions="auto,*" Background="Transparent">
+    <StackPanel>
+      <!-- The singer's model image, as a wide banner at the top of the inspector panel. The compact
+           track rows show the same image as a small thumbnail (PortraitThumb below) instead. Both
+           draw one bitmap, the view model's Portrait, so the image is decoded once. -->
+      <Border Name="PortraitBannerBorder" ClipToBounds="True" Margin="0,0,0,2" IsVisible="False">
+        <Image Name="PortraitBanner" MaxHeight="150" HorizontalAlignment="Stretch" VerticalAlignment="Top"
+               Source="{Binding Portrait}" Stretch="Uniform" IsVisible="{Binding HasPortrait}"/>
+      </Border>
+      <Grid ColumnDefinitions="auto,*" Background="Transparent">
       <Panel Grid.Column="0" VerticalAlignment="Stretch" Background="Transparent" PointerWheelChanged="MoveHandleScrolled"
              PointerMoved="MoveHandleMoved" PointerPressed="MoveHandlePressed" PointerReleased="MoveHandleReleased">
         <Border Name="AvatarBorder" BorderThickness="0,0,1,1" VerticalAlignment="Top" CornerRadius="0,0,2,0"
                 BorderBrush="{DynamicResource NeutralAccentBrushSemi}" ClipToBounds="True" IsHitTestVisible="false">
           <Image Height="{Binding AvatarHeight}" Source="{Binding Avatar}" Stretch="Uniform" VerticalAlignment="Top" ToolTip.Tip="{Binding Singer}"/>
         </Border>
-        <Border Background="{Binding TrackAccentColor}" Height="16" Width="22" CornerRadius="1,0,2,0"
-                HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="false">
-          <TextBlock TextAlignment="Center" FontWeight="Bold"
-                     Text="{Binding TrackNo}" Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Center"/>
-        </Border>
+        <StackPanel Orientation="Horizontal" HorizontalAlignment="Left" VerticalAlignment="Top" IsHitTestVisible="False">
+          <!-- The model image thumbnail of a compact row: left of the track number, as tall as a
+               small avatar, so the singer is recognisable at a glance. -->
+          <Border Name="PortraitThumbBorder" ClipToBounds="True" Margin="2,2,2,0" IsVisible="False">
+            <Image Name="PortraitThumb" Height="30" Stretch="Uniform" VerticalAlignment="Top"
+                   Source="{Binding Portrait}" IsVisible="{Binding HasPortrait}"/>
+          </Border>
+          <Border Background="{Binding TrackAccentColor}" Height="16" Width="22" CornerRadius="1,0,2,0"
+                  VerticalAlignment="Top">
+            <TextBlock TextAlignment="Center" FontWeight="Bold"
+                       Text="{Binding TrackNo}" Foreground="White" VerticalAlignment="Center" HorizontalAlignment="Center"/>
+          </Border>
+        </StackPanel>
       </Panel>
       <!-- One grid for the labels and the buttons so they line up: mute and solo with the name,
            settings with the renderer and fx with the faders. Rows hidden at small track heights
@@ -274,6 +290,7 @@
           <MenuItem Classes="context" Header="{DynamicResource tracks.mixfx}" Command="{Binding OpenMixFxDialog}"/>
         </ContextMenu>
       </Grid.ContextMenu>
-    </Grid>
+      </Grid>
+    </StackPanel>
   </Border>
 </UserControl>

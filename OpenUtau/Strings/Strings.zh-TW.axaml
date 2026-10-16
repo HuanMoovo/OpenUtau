@@ -606,7 +606,6 @@ OpenUtau 致力於為 UTAU 社群建立開源編輯環境，提供現代化使�
   <!--<system:String x:Key="prefs.appearance.playbacknotehighlight">Highlight notes on playback</system:String>-->
   <system:String x:Key="prefs.appearance.showghostnotes">在鋼琴卷軸上顯示其他音軌的音符</system:String>
   <system:String x:Key="prefs.appearance.showicon">在鋼琴卷軸上顯示角色頭像</system:String>
-  <system:String x:Key="prefs.appearance.showportrait">在鋼琴卷軸上顯示角色背景圖</system:String>
   <system:String x:Key="prefs.appearance.sortorder">歌手名稱顯示語言</system:String>
   <system:String x:Key="prefs.appearance.theme">主題</system:String>
   <system:String x:Key="prefs.appearance.theme.dark">深色</system:String>

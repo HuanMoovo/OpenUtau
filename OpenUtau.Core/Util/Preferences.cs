@@ -229,12 +229,7 @@ namespace OpenUtau.Core.Util {
             public int LockStartTime = 0;
             public int PlaybackAutoScroll = 2;
             public bool ReverseLogOrder = true;
-            public bool ShowPortrait = true;
             public bool ShowIcon = true;
-            // Piano roll portrait overrides applied to every voicebank.
-            // 0 = keep the value from the voicebank's character.yaml (default behaviour).
-            public int PortraitHeight = 0;
-            public float PortraitOpacity = 0;
 
             public bool ShowGhostNotes = true;
             public bool NoteHoverGlow = true;

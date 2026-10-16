@@ -69,6 +69,9 @@ namespace OpenUtau.App.Controls {
             Header.DataContext = viewModel;
             // Also hands the header the track itself, for the track settings dialog.
             Header.Bind(target);
+            // The singer's model image follows the selection: the view model may have resolved its
+            // portrait while the panel was showing another track.
+            viewModel?.RefreshPortrait();
             Header.UpdateVisibility();
         }
     }

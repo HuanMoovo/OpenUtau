@@ -607,7 +607,6 @@ Avertisment: această opțiune va elimina presetările personalizate.</system:St
   <!--<system:String x:Key="prefs.appearance.playbacknotehighlight">Highlight notes on playback</system:String>-->
   <system:String x:Key="prefs.appearance.showghostnotes">Afișează notele altor track-uri pe rola de pian</system:String>
   <system:String x:Key="prefs.appearance.showicon">Afișează iconița pe rola de pian</system:String>
-  <system:String x:Key="prefs.appearance.showportrait">Afișează portretul pe rola de pian</system:String>
   <system:String x:Key="prefs.appearance.sortorder">Limba de afișare a cântăreților</system:String>
   <system:String x:Key="prefs.appearance.theme">Temă</system:String>
   <system:String x:Key="prefs.appearance.theme.dark">Întunecat</system:String>

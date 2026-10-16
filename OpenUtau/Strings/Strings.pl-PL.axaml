@@ -607,7 +607,6 @@ Uwaga: ta opcja usuwa presety własne.</system:String>
   <!--<system:String x:Key="prefs.appearance.playbacknotehighlight">Highlight notes on playback</system:String>-->
   <system:String x:Key="prefs.appearance.showghostnotes">Pokaż nuty innych ścieżek na piano roll</system:String>
   <system:String x:Key="prefs.appearance.showicon">Pokaż ikony na piano roll</system:String>
-  <system:String x:Key="prefs.appearance.showportrait">Pokaż portret na piano roll</system:String>
   <system:String x:Key="prefs.appearance.sortorder">Język nazw głosów</system:String>
   <system:String x:Key="prefs.appearance.theme">Motyw</system:String>
   <system:String x:Key="prefs.appearance.theme.dark">Ciemny</system:String>

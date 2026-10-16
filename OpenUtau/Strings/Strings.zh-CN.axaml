@@ -672,7 +672,6 @@ OpenUtau 是一个开源项目, 旨在为 UTAU 用户社区提供现代的用户
   <!--<system:String x:Key="prefs.appearance.playbacknotehighlight">Highlight notes on playback</system:String>-->
   <system:String x:Key="prefs.appearance.showghostnotes">在钢琴窗上显示其他音轨的音符</system:String>
   <system:String x:Key="prefs.appearance.showicon">在钢琴窗上显示歌手图标</system:String>
-  <system:String x:Key="prefs.appearance.showportrait">在钢琴窗上显示歌手背景图</system:String>
   <system:String x:Key="prefs.appearance.sortorder">歌手名称显示语言</system:String>
   <system:String x:Key="prefs.appearance.theme">主题</system:String>
   <system:String x:Key="prefs.appearance.theme.dark">暗</system:String>

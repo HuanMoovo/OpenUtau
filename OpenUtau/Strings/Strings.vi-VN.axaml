@@ -608,7 +608,6 @@ Lưu ý: tuỳ chọn này cũng sẽ xoá các tổ hợp thiết lập của b
   <!--<system:String x:Key="prefs.appearance.playbacknotehighlight">Highlight notes on playback</system:String>-->
   <system:String x:Key="prefs.appearance.showghostnotes">Hiện nốt các track khác trong Piano Roll</system:String>
   <system:String x:Key="prefs.appearance.showicon">Hiện icon trong Piano Roll</system:String>
-  <system:String x:Key="prefs.appearance.showportrait">Hiện avatar trong Piano Roll</system:String>
   <system:String x:Key="prefs.appearance.sortorder">Ngôn ngữ hiển thị tên thư viện</system:String>
   <system:String x:Key="prefs.appearance.theme">Chủ đề</system:String>
   <system:String x:Key="prefs.appearance.theme.dark">Tối</system:String>

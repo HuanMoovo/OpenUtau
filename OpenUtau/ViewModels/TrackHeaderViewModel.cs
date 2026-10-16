@@ -41,6 +41,12 @@ namespace OpenUtau.App.ViewModels {
         [Reactive] public partial bool IsSelected { get; set; }
         [Reactive] public partial Bitmap? Avatar { get; set; }
         [Reactive] public partial double AvatarHeight { get; set; }
+        /// <summary>
+        /// The singer's model image. One bitmap feeds both views of the header: the inspector's
+        /// banner and the compact row's thumbnail.
+        /// </summary>
+        [Reactive] public partial Bitmap? Portrait { get; set; }
+        public bool HasPortrait => Portrait != null;
         [Reactive] public partial bool IsSingerVisible { get; set; }
         [Reactive] public partial bool IsPhonemizerVisible { get; set; }
         [Reactive] public partial bool IsRendererVisible { get; set; }
@@ -79,6 +85,7 @@ namespace OpenUtau.App.ViewModels {
                 this.RaisePropertyChanged(nameof(Singer));
                 this.RaisePropertyChanged(nameof(Renderer));
                 RefreshAvatar();
+                RefreshPortrait();
             });
             SelectPhonemizerCommand = ReactiveCommand.Create<PhonemizerFactory>(factory => {
                 if (track.Phonemizer.GetType() != factory.type) {
@@ -160,6 +167,7 @@ namespace OpenUtau.App.ViewModels {
                 .Subscribe(_ => RefreshSelectionStyle());
 
             RefreshAvatar();
+            RefreshPortrait();
             RefreshSelectionStyle();
         }
 
@@ -440,6 +448,30 @@ namespace OpenUtau.App.ViewModels {
             }) ?? EmptyAvatar;
         }
 
+        /// <summary>
+        /// Loads the singer's model image, through the shared decode cache: one decode per singer,
+        /// however many headers (compact row and inspector) show it. A singer whose image cannot be
+        /// read shows nothing rather than a stale picture. Cached bitmaps are shared, so they are
+        /// never disposed here; the cache re-decodes when the singer's portrait or height changes.
+        /// </summary>
+        public void RefreshPortrait() {
+            var singer = track?.Singer;
+            if (singer == null || !singer.Found) {
+                SetPortrait(null);
+                return;
+            }
+            SetPortrait(SingerPortraitCache.Get(singer, bitmap => {
+                if (ReferenceEquals(track?.Singer, singer)) {
+                    SetPortrait(bitmap);
+                }
+            }));
+        }
+
+        void SetPortrait(Bitmap? bitmap) {
+            Portrait = bitmap;
+            this.RaisePropertyChanged(nameof(HasPortrait));
+        }
+
         public void ManuallyRaise() {
             TrackName = track.TrackName;
             TrackAccentColor = ThemeManager.GetTrackColor(track.TrackColor).AccentColor;
@@ -463,6 +495,7 @@ namespace OpenUtau.App.ViewModels {
             this.RaisePropertyChanged(nameof(Volume));
             this.RaisePropertyChanged(nameof(Pan));
             RefreshAvatar();
+            RefreshPortrait();
         }
 
         public void Remove() {

@@ -75,29 +75,6 @@ namespace OpenUtau.App.Controls {
             ValueTip.IsVisible = false;
             SetPenToolIcon();
             penTool.AddHandler(PointerPressedEvent, OnToolButtonPointerPressed, RoutingStrategies.Tunnel | RoutingStrategies.Bubble, true);
-            this.LayoutUpdated += PianoRollLayoutUpdated;
-        }
-
-        private void PianoRollLayoutUpdated(object? sender, EventArgs e) {
-            UpdatePortraitPosition();
-        }
-
-        private void UpdatePortraitPosition() {
-            // The portrait stands at the top right of the note area, 100px from its right edge.
-            // The width is taken from the source as well, so a portrait that loads before any
-            // layout pass has seen it is placed right away - Canvas would leave it at 0,0.
-            double width = PortraitImage.DesiredSize.Width;
-            if (width == 0 && PortraitImage.Source is Bitmap bitmap) {
-                width = bitmap.Size.Width;
-            }
-            double canvasWidth = PortraitCanvas.Bounds.Width;
-            if (width == 0 || canvasWidth == 0) {
-                return;
-            }
-            Canvas.SetTop(PortraitImage, 0);
-            // A portrait wider than the note area stays at its left edge instead of sliding
-            // off over the piano keyboard.
-            Canvas.SetLeft(PortraitImage, Math.Max(0, canvasWidth - width - 100));
         }
 
         public void InitializePianoRollWindowAsync() {
@@ -305,17 +282,11 @@ namespace OpenUtau.App.Controls {
         }
 
         // View menu
-        void OnMenuShowPortrait(object sender, RoutedEventArgs args) {
-            Preferences.Default.ShowPortrait = !Preferences.Default.ShowPortrait;
-            Preferences.Save();
-            ViewModel.RaisePropertyChanged(nameof(ViewModel.ShowPortrait));
-            MessageBus.Current.SendMessage(new PianorollRefreshEvent("Portrait"));
-        }
         void OnMenuShowIcon(object sender, RoutedEventArgs args) {
             Preferences.Default.ShowIcon = !Preferences.Default.ShowIcon;
             Preferences.Save();
             ViewModel.RaisePropertyChanged(nameof(ViewModel.ShowIcon));
-            MessageBus.Current.SendMessage(new PianorollRefreshEvent("Portrait"));
+            MessageBus.Current.SendMessage(new PianorollRefreshEvent("Icon"));
         }
         void OnMenuShowGhostNotes(object sender, RoutedEventArgs args) {
             Preferences.Default.ShowGhostNotes = !Preferences.Default.ShowGhostNotes;
