@@ -19,7 +19,7 @@
          matching. Bumping the fork counter is a one-line change here, plus a tag
          v<Version>-fork.<ForkRelease> on the release. -->
     <Version>0.1.565</Version>
-    <ForkRelease>2</ForkRelease>
+    <ForkRelease>3</ForkRelease>
     <InformationalVersion>$(Version)-fork.$(ForkRelease)</InformationalVersion>
     <!-- Keep the reported version exactly "<core>-fork.<n>"; a "+<commit>" suffix would
          only be noise in the window title and the updater dialog. -->

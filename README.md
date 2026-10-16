@@ -14,7 +14,7 @@
 
 ## What is this branch? / 本分支是什么
 
-- An **enhancement branch** of OpenUtau tracking **upstream `master`**. This fork's `master` is currently **26 commits ahead** of upstream ([compare](https://github.com/HuanMoovo/OpenUtau/compare/13184085f2cee51c174de9ee99163a76ee970e8c...master)).
+- An **enhancement branch** of OpenUtau tracking **upstream `master`**. This fork's `master` is currently **29 commits ahead** of upstream ([compare](https://github.com/HuanMoovo/OpenUtau/compare/13184085f2cee51c174de9ee99163a76ee970e8c...master)).
 - **MIT licensed**, same as upstream — see `LICENSE.txt` (© StAkira / OpenUtau contributors). **No upstream code has been removed**; upstream's original README is kept unchanged at the bottom of this page.
 - Scope: performance of large projects, a Synthesizer V Studio–style black-gray default UI, singer portrait auto-detection, and fixes for bugs tracked upstream.
 
@@ -86,7 +86,7 @@ Note: the suites use xunit v3 on Microsoft.Testing.Platform — `dotnet test --f
 
 ## Relationship to upstream
 
-- Built on [openutau/OpenUtau](https://github.com/openutau/OpenUtau) `master`; this fork's `master` is **26 commits ahead**, and **no upstream code was removed** — upstream's original README is kept unchanged at the bottom of this page.
+- Built on [openutau/OpenUtau](https://github.com/openutau/OpenUtau) `master`; this fork's `master` is **29 commits ahead**, and **no upstream code was removed** — upstream's original README is kept unchanged at the bottom of this page.
 - **MIT License**, unchanged (`LICENSE.txt`, © StAkira / OpenUtau contributors). All fork changes are released under the same license.
 - Sync with upstream like any fork:
 

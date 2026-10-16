@@ -13,7 +13,7 @@
 
 ## 本分支是什么
 
-- 是 OpenUtau 的**增强分支**，跟踪**上游 `master`**。本分支 `master` 当前**领先上游 26 个提交**（[对比](https://github.com/HuanMoovo/OpenUtau/compare/13184085f2cee51c174de9ee99163a76ee970e8c...master)）。
+- 是 OpenUtau 的**增强分支**，跟踪**上游 `master`**。本分支 `master` 当前**领先上游 29 个提交**（[对比](https://github.com/HuanMoovo/OpenUtau/compare/13184085f2cee51c174de9ee99163a76ee970e8c...master)）。
 - **MIT 许可**，与上游相同 —— 见 `LICENSE.txt`（© StAkira 及 OpenUtau 贡献者）。**未删除任何上游代码**；上游原版 README 完整保留在 [README.md](README.md) 末尾。
 - 改动范围：大工程性能、仿 Synthesizer V Studio 的黑灰默认界面、歌手立绘自动识别，以及一批上游跟踪的 BUG 修复。
 
