@@ -438,11 +438,35 @@ namespace OpenUtau.Classic {
 
         static void AddFilenameAlias(OtoSet otoSet) {
             // Use filename as alias.
-            var files = otoSet.Otos.Where(oto => oto.IsValid).Select(oto => oto.Wav).Distinct().ToList();
-            foreach (var wav in files) {
+            // One pass collects everything the loop used to rescan: the alias set it tested
+            // against (including the aliases appended below, which the live-list scan saw as
+            // well) and the lowest-offset oto per wav. OrderBy is a stable sort, so the
+            // reference is the first oto in list order among equal offsets; the comparer here
+            // keeps exactly that rule, Double.NaN included. The new aliases are appended in
+            // first-seen wav order, like the Distinct() list they replace.
+            var aliases = new HashSet<string>();
+            var validWavs = new List<string>();
+            var seenWavs = new HashSet<string>();
+            var references = new Dictionary<string, Oto>();
+            foreach (var oto in otoSet.Otos) {
+                aliases.Add(oto.Alias);
+                var wav = oto.Wav;
+                if (wav == null) {
+                    // A failed parse has no wav, so it could never be a reference.
+                    continue;
+                }
+                if (!references.TryGetValue(wav, out var reference)
+                        || Comparer<double>.Default.Compare(oto.Offset, reference.Offset) < 0) {
+                    references[wav] = oto;
+                }
+                if (oto.IsValid && seenWavs.Add(wav)) {
+                    validWavs.Add(wav);
+                }
+            }
+            foreach (var wav in validWavs) {
                 string filename = Path.GetFileNameWithoutExtension(wav);
-                if (!otoSet.Otos.Any(oto => oto.Alias == filename)) {
-                    var reference = otoSet.Otos.OrderBy(oto => oto.Offset).First(oto => oto.Wav == wav);
+                if (aliases.Add(filename)) {
+                    var reference = references[wav];
                     var oto = new Oto {
                         Alias = filename,
                         Phonetic = filename,

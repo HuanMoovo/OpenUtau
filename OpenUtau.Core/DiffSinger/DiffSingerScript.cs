@@ -66,19 +66,12 @@ namespace OpenUtau.Core.DiffSinger {
             phNumList.Add(1);
             ++phNumList[0];
             var nonSlurNotes = notes.Where(n=>!n.lyric.StartsWith("+")).ToArray();
-            for (int i = 1; i < phCount; ++i) {
-                if (phones[i].positionMs <= phones[i - 1].endMs) {
-                    continue;
-                }
-                int owner = -1;
-                for (int k = 0; k < nonSlurNotes.Length; ++k) {
-                    if (phones[i - 1].position < nonSlurNotes[k].position - ep) {
-                        owner = k;
-                        break;
-                    }
-                }
-                ++phNumList[owner < 0 ? nonSlurNotes.Length : owner];
-            }
+            FixupGapPhNums(phNumList,
+                phones.Select(p => p.position).ToArray(),
+                phones.Select(p => p.positionMs).ToArray(),
+                phones.Select(p => p.endMs).ToArray(),
+                nonSlurNotes.Select(n => n.position).ToArray(),
+                ep);
             ph_num = phNumList.ToArray();
 
             //Build note arrays with rest notes inserted for gaps between notes
@@ -178,6 +171,43 @@ namespace OpenUtau.Core.DiffSinger {
             }
 
             offsetMs = phrase.phones[0].positionMs - headMs;
+        }
+
+        /// <summary>
+        /// Adds the inter-phoneme gap corrections to <paramref name="phNumList"/>: for every
+        /// gap between two phones that no note covers, the note owning the gap gets one more
+        /// phoneme, and a gap past every note goes to the trailing bucket
+        /// (<c>nonSlurNotePositions.Length</c>). The owner is the first non-slur note whose
+        /// position minus <paramref name="ep"/> ticks is past the previous phone, so the
+        /// owner index is monotone in the phone position. A phrase's phones run forwards, so
+        /// one cursor walks the notes across all gaps instead of restarting the search at 0;
+        /// if a phone position ever moves backwards the cursor rewinds, which keeps the
+        /// result identical to a per-gap search from 0 for any input.
+        /// </summary>
+        internal static void FixupGapPhNums(List<int> phNumList,
+                int[] phonePositions, double[] phonePositionMs, double[] phoneEndMs,
+                int[] nonSlurNotePositions, int ep) {
+            int noteCursor = 0;
+            bool searchedBefore = false;
+            int lastSearchedPosition = 0;
+            for (int i = 1; i < phonePositions.Length; ++i) {
+                if (phonePositionMs[i] <= phoneEndMs[i - 1]) {
+                    continue;
+                }
+                int position = phonePositions[i - 1];
+                if (searchedBefore && position < lastSearchedPosition) {
+                    noteCursor = 0;
+                }
+                searchedBefore = true;
+                lastSearchedPosition = position;
+                while (noteCursor < nonSlurNotePositions.Length
+                        && position >= nonSlurNotePositions[noteCursor] - ep) {
+                    ++noteCursor;
+                }
+                ++phNumList[noteCursor < nonSlurNotePositions.Length
+                    ? noteCursor
+                    : nonSlurNotePositions.Length];
+            }
         }
 
         private static double[] ComputeVarianceCurve(
