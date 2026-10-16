@@ -47,7 +47,15 @@ namespace OpenUtau.App.ViewModels {
         [Reactive] public partial double TrackOffset { get; set; }
         [Reactive] public partial int SnapDiv { get; set; }
         [Reactive] public partial int Key { get; set; }
-        public ObservableCollectionExtended<int> SnapTicks { get; } = new ObservableCollectionExtended<int>();
+        /// <summary>
+        /// Ticks of the piano roll's bar and beat lines, ascending. Snapping brackets a tick with two
+        /// neighbours from this list, so it is a snapshot of the traversal in <see cref="SnapLineBuilder"/>
+        /// over this view's zoom, scroll, bounds and time axis: rebuilt whole by
+        /// <see cref="UpdateSnapLines"/> and never mutated. It used to be written by
+        /// TickBackground.Render, which left it empty (and snapping on the fallback) until the
+        /// background had painted once.
+        /// </summary>
+        public IReadOnlyList<int> SnapLines => snapLines;
         [Reactive] public partial double PlayPosX { get; set; }
         [Reactive] public partial double PlayPosHighlightX { get; set; }
         [Reactive] public partial double PlayPosHighlightWidth { get; set; }
@@ -113,6 +121,15 @@ namespace OpenUtau.App.ViewModels {
 
         internal NotesViewModelHitTest HitTest;
         private int _lastNoteLength = 480;
+        // Snap lines, see SnapLines and UpdateSnapLines.
+        int[] snapLines = Array.Empty<int>();
+        double snapLinesTickWidth = double.NaN;
+        double snapLinesTickOffset = double.NaN;
+        double snapLinesWidth = double.NaN;
+        int snapLinesTickOrigin = int.MinValue;
+        int snapLinesSnapDiv = int.MinValue;
+        UProject? snapLinesProject;
+        bool snapLinesStale = true;
         private int playPosTick;
         private UNote[] playbackNotes = Array.Empty<UNote>();
         private string? portraitSource;
@@ -166,6 +183,12 @@ namespace OpenUtau.App.ViewModels {
                 .Subscribe(tickOffset => {
                     SetPlayPos(DocManager.Inst.playPosTick, false);
                 });
+            // Snap lines feed both the background's drawing and TickToLineTick, so they follow every
+            // input they are built from instead of waiting for a paint.
+            this.WhenAnyValue(x => x.TickWidth, x => x.TickOffset, x => x.TickOrigin, x => x.SnapDiv, x => x.Bounds)
+                .Subscribe(_ => UpdateSnapLines());
+            MessageBus.Current.Listen<TimeAxisChangedEvent>()
+                .Subscribe(e => InvalidateSnapLines());
             this.WhenAnyValue(x => x.ExpBounds, x => x.PrimaryKey)
                 .Subscribe(t => {
                     UExpressionDescriptor? descriptor = null;
@@ -457,23 +480,68 @@ namespace OpenUtau.App.ViewModels {
             return (int)(point.X / TickWidth + TickOffset);
         }
 
+        /// <summary>
+        /// Rebuilds <see cref="SnapLines"/> from the tick axis and the current zoom, scroll, bounds
+        /// and snap division. Runs whenever any of those change, and from <see cref="TickToLineTick"/>
+        /// so readers that run before the first frame (commands at load, a hidden piano roll, tests)
+        /// snap against real lines instead of the fallback.
+        /// </summary>
+        public void UpdateSnapLines() {
+            if (!snapLinesStale
+                && snapLinesTickWidth == TickWidth
+                && snapLinesTickOffset == TickOffset
+                && snapLinesWidth == Bounds.Width
+                && snapLinesTickOrigin == TickOrigin
+                && snapLinesSnapDiv == SnapDiv
+                && ReferenceEquals(snapLinesProject, Project)) {
+                return;
+            }
+            snapLinesStale = false;
+            snapLinesTickWidth = TickWidth;
+            snapLinesTickOffset = TickOffset;
+            snapLinesWidth = Bounds.Width;
+            snapLinesTickOrigin = TickOrigin;
+            snapLinesSnapDiv = SnapDiv;
+            snapLinesProject = Project;
+            var lines = SnapLineBuilder.Build(Project, TickWidth, TickOffset, TickOrigin, Bounds.Width, SnapDiv);
+            if (lines == null) {
+                return; // Nothing to build from yet, keep the last snapshot.
+            }
+            if (!lines.AsSpan().SequenceEqual(snapLines)) {
+                snapLines = lines;
+                this.RaisePropertyChanged(nameof(SnapLines));
+            }
+        }
+
+        /// <summary>
+        /// Marks the snap lines for a rebuild by the next <see cref="UpdateSnapLines"/>, for changes
+        /// the inputs above do not capture: the time axis (rebuilt in place on tempo and time
+        /// signature edits) and the project itself.
+        /// </summary>
+        public void InvalidateSnapLines() {
+            snapLinesStale = true;
+            UpdateSnapLines();
+        }
+
         public void TickToLineTick(int tick, out int left, out int right) {
-            if (SnapTicks.Count == 0) {
+            UpdateSnapLines();
+            var lines = snapLines;
+            if (lines.Length == 0) {
                 left = 0;
                 right = Project.resolution;
                 return;
             }
-            int index = SnapTicks.BinarySearch(tick + TickOrigin);
+            int index = Array.BinarySearch(lines, tick + TickOrigin);
             if (index < 0) {
                 index = ~index - 1;
             }
-            if (0 >= SnapTicks.Count - 2) {
+            if (0 >= lines.Length - 2) {
                 left = right = tick;
                 return;
             }
-            index = Math.Clamp(index, 0, SnapTicks.Count - 2);
-            left = SnapTicks[index] - TickOrigin;
-            right = SnapTicks[index + 1] - TickOrigin;
+            index = Math.Clamp(index, 0, lines.Length - 2);
+            left = lines[index] - TickOrigin;
+            right = lines[index + 1] - TickOrigin;
         }
 
         public void PointToLineTick(Point point, out int left, out int right) {
@@ -1206,6 +1274,7 @@ namespace OpenUtau.App.ViewModels {
                     UnloadPart();
                     LoadPortrait(null, null);
                     PrimaryKeyNotSupported = !IsExpSupported(PrimaryKey);
+                    InvalidateSnapLines();
                 } else if (cmd is SelectExpressionNotification selectExp) {
                     SecondaryKey = PrimaryKey;
                     PrimaryKey = selectExp.ExpKey;

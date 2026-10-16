@@ -90,7 +90,13 @@ namespace OpenUtau.App.ViewModels {
         [Reactive] public partial double TrackOffset { get; set; }
         [Reactive] public partial int SnapDiv { get; set; }
         [Reactive] public partial int SnapUnit { get; set; }
-        public ObservableCollectionExtended<int> SnapTicks { get; } = new ObservableCollectionExtended<int>();
+        /// <summary>
+        /// Ticks of the workspace timeline's bar and beat lines, ascending. The counterpart of
+        /// <see cref="NotesViewModel.SnapLines"/>: rebuilt whole by <see cref="UpdateSnapLines"/> from
+        /// the zoom, scroll, bounds and time axis, and never mutated, so the background draws it
+        /// instead of producing it during a paint.
+        /// </summary>
+        public IReadOnlyList<int> SnapLines => snapLines;
         [Reactive] public partial double PlayPosX { get; set; }
         [Reactive] public partial double PlayPosHighlightX { get; set; }
         [Reactive] public partial double PlayPosHighlightWidth { get; set; }
@@ -131,6 +137,14 @@ namespace OpenUtau.App.ViewModels {
         public readonly List<UPart> SelectedParts = new List<UPart>();
         public readonly List<UTrack> SelectedTracks = new List<UTrack>();
         private readonly HashSet<UPart> TempSelectedParts = new HashSet<UPart>();
+        // Snap lines, see SnapLines and UpdateSnapLines.
+        int[] snapLines = Array.Empty<int>();
+        double snapLinesTickWidth = double.NaN;
+        double snapLinesTickOffset = double.NaN;
+        double snapLinesWidth = double.NaN;
+        int snapLinesSnapDiv = int.MinValue;
+        UProject? snapLinesProject;
+        bool snapLinesStale = true;
 
         public TracksViewModel() {
             viewportTicks = this.WhenAnyValue(x => x.Bounds, x => x.TickWidth)
@@ -160,6 +174,12 @@ namespace OpenUtau.App.ViewModels {
                 .Subscribe(tickOffset => {
                     SetPlayPos(DocManager.Inst.playPosTick, false);
                 });
+            // The snap lines are what the timeline background draws, so they follow every input
+            // they are built from instead of reacting to a paint.
+            this.WhenAnyValue(x => x.TickWidth, x => x.TickOffset, x => x.SnapDiv, x => x.Bounds)
+                .Subscribe(_ => UpdateSnapLines());
+            MessageBus.Current.Listen<TimeAxisChangedEvent>()
+                .Subscribe(e => InvalidateSnapLines());
 
             TickWidth = ViewConstants.TickWidthDefault;
             TrackHeight = ViewConstants.TrackHeightDefault;
@@ -230,6 +250,45 @@ namespace OpenUtau.App.ViewModels {
             this.RaisePropertyChanged(nameof(TrackCount));
             this.RaisePropertyChanged(nameof(VScrollBarMax));
             this.RaisePropertyChanged(nameof(ViewportTracks));
+        }
+
+        /// <summary>
+        /// Rebuilds <see cref="SnapLines"/> from the tick axis and the current zoom, scroll and bounds.
+        /// The counterpart of <see cref="NotesViewModel.UpdateSnapLines"/>; this view has no tick
+        /// origin, the timeline starts at tick 0.
+        /// </summary>
+        public void UpdateSnapLines() {
+            if (!snapLinesStale
+                && snapLinesTickWidth == TickWidth
+                && snapLinesTickOffset == TickOffset
+                && snapLinesWidth == Bounds.Width
+                && snapLinesSnapDiv == SnapDiv
+                && ReferenceEquals(snapLinesProject, Project)) {
+                return;
+            }
+            snapLinesStale = false;
+            snapLinesTickWidth = TickWidth;
+            snapLinesTickOffset = TickOffset;
+            snapLinesWidth = Bounds.Width;
+            snapLinesSnapDiv = SnapDiv;
+            snapLinesProject = Project;
+            var lines = SnapLineBuilder.Build(Project, TickWidth, TickOffset, 0, Bounds.Width, SnapDiv);
+            if (lines == null) {
+                return; // Nothing to build from yet, keep the last snapshot.
+            }
+            if (!lines.AsSpan().SequenceEqual(snapLines)) {
+                snapLines = lines;
+                this.RaisePropertyChanged(nameof(SnapLines));
+            }
+        }
+
+        /// <summary>
+        /// Marks the snap lines for a rebuild by the next <see cref="UpdateSnapLines"/>, for changes
+        /// the inputs above do not capture: the time axis and the project itself.
+        /// </summary>
+        public void InvalidateSnapLines() {
+            snapLinesStale = true;
+            UpdateSnapLines();
         }
 
         public int PointToTick(Point point) {
@@ -539,6 +598,7 @@ namespace OpenUtau.App.ViewModels {
                     Tracks.AddRange(loadProjectNotif.project.tracks);
                     SelectedTracks.Clear();
                     PianoRollOpenPart = null;
+                    InvalidateSnapLines();
                     MessageBus.Current.SendMessage(new TracksRefreshEvent());
                     MessageBus.Current.SendMessage(new TrackSelectionEvent(SelectedTracks.ToArray()));
                 } else if (cmd is SetPlayPosTickNotification setPlayPosTick) {

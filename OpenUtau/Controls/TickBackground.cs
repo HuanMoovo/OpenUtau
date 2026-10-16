@@ -1,5 +1,5 @@
 ﻿using System;
-using System.Collections.ObjectModel;
+using System.Collections.Generic;
 using Avalonia;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
@@ -37,11 +37,11 @@ namespace OpenUtau.App.Controls {
                 nameof(SnapDiv),
                 o => o.SnapDiv,
                 (o, v) => o.SnapDiv = v);
-        public static readonly DirectProperty<TickBackground, ObservableCollection<int>?> SnapTicksProperty =
-            AvaloniaProperty.RegisterDirect<TickBackground, ObservableCollection<int>?>(
-                nameof(SnapTicks),
-                o => o.SnapTicks,
-                (o, v) => o.SnapTicks = v);
+        public static readonly DirectProperty<TickBackground, IReadOnlyList<int>?> SnapLinesProperty =
+            AvaloniaProperty.RegisterDirect<TickBackground, IReadOnlyList<int>?>(
+                nameof(SnapLines),
+                o => o.SnapLines,
+                (o, v) => o.SnapLines = v);
         public static readonly DirectProperty<TickBackground, bool> ShowBarProperty =
             AvaloniaProperty.RegisterDirect<TickBackground, bool>(
                 nameof(ShowBar),
@@ -69,9 +69,14 @@ namespace OpenUtau.App.Controls {
             get => _snapDiv;
             set => SetAndRaise(SnapDivProperty, ref _snapDiv, value);
         }
-        public ObservableCollection<int>? SnapTicks {
-            get => _snapTicks;
-            set => SetAndRaise(SnapTicksProperty, ref _snapTicks, value);
+        /// <summary>
+        /// The bar/beat lines to draw, computed by the view model (see NotesViewModel.UpdateSnapLines)
+        /// rather than produced here while painting. Ascending; the last entry is the first bar past
+        /// the right edge, which snapping uses but the renderer does not draw.
+        /// </summary>
+        public IReadOnlyList<int>? SnapLines {
+            get => _snapLines;
+            set => SetAndRaise(SnapLinesProperty, ref _snapLines, value);
         }
         public bool ShowBar {
             get => _showBar;
@@ -83,7 +88,7 @@ namespace OpenUtau.App.Controls {
         private double _tickOffset;
         private int _tickOrigin;
         private int _snapDiv;
-        private ObservableCollection<int>? _snapTicks;
+        private IReadOnlyList<int>? _snapLines;
         private bool _showBar = true;
 
         private Pen penBar;
@@ -118,6 +123,7 @@ namespace OpenUtau.App.Controls {
                 change.Property == TickWidthProperty ||
                 change.Property == TickOffsetProperty ||
                 change.Property == SnapDivProperty ||
+                change.Property == SnapLinesProperty ||
                 change.Property == ShowBarProperty) {
                 InvalidateVisual();
             }
@@ -128,60 +134,35 @@ namespace OpenUtau.App.Controls {
                 return;
             }
             var project = Core.DocManager.Inst.Project;
-            int snapUnit = project.resolution * 4 / SnapDiv;
-            while (snapUnit * TickWidth < ViewConstants.MinTicklineWidth) {
-                snapUnit *= 2; // Avoid drawing too dense.
+            // The lines come from the view model, which computed them from the same zoom, scroll,
+            // bounds and time axis (see NotesViewModel.UpdateSnapLines / TracksViewModel.UpdateSnapLines).
+            // That keeps snapping working before this control has ever painted.
+            var snapLines = SnapLines;
+            if (snapLines == null || snapLines.Count < 2) {
+                return;
             }
-            double minLineTick = ViewConstants.MinTicklineWidth / TickWidth;
             double pixelOffset = (TickOffset + TickOrigin) * TickWidth;
-            double leftTick = TickOffset + TickOrigin;
-            double rightTick = TickOffset + TickOrigin + Bounds.Width / TickWidth;
-
-            project.timeAxis.TickPosToBarBeat(TickOrigin, out int bar, out int beat, out int remainingTicks);
-            if (bar > 0) {
-                bar--;
+            // The last line is the bar past the right edge: snapping needs it, drawing never showed it.
+            for (int i = 0; i < snapLines.Count - 1; i++) {
+                int tick = snapLines[i];
+                double x = Math.Round(tick * TickWidth - pixelOffset) + 0.5;
+                project.timeAxis.TickPosToBarBeat(tick, out int bar, out int beat, out int remainingTicks);
+                if (remainingTicks == 0 && beat == 0) {
+                    double y = -0.5;
+                    if (ShowBar) {
+                        var textLayout = TextLayoutCache.Get((bar + 1).ToString(), ThemeManager.BarNumberBrush, 10);
+                        using (var state = context.PushTransform(Matrix.CreateTranslation(x + 3, 10))) {
+                            textLayout.Draw(context, new Point());
+                        }
+                    }
+                    context.DrawLine(penBar, new Point(x, y), new Point(x, Bounds.Height + 0.5f));
+                } else {
+                    // Lines between bars.
+                    var pen = remainingTicks != 0 ? penDanshed : penBeatUnit;
+                    double y = ShowBar ? 24 : 0;
+                    context.DrawLine(pen, new Point(x, y), new Point(x, Bounds.Height + 0.5f));
+                }
             }
-            int barTick = project.timeAxis.BarBeatToTickPos(bar, 0);
-            SnapTicks?.Clear();
-            while (barTick <= rightTick) {
-                SnapTicks?.Add(barTick);
-                double x = Math.Round(barTick * TickWidth - pixelOffset) + 0.5;
-                double y = -0.5;
-                if (ShowBar) {
-                    var textLayout = TextLayoutCache.Get((bar + 1).ToString(), ThemeManager.BarNumberBrush, 10);
-                    using (var state = context.PushTransform(Matrix.CreateTranslation(x + 3, 10))) {
-                        textLayout.Draw(context, new Point());
-                    }
-                }
-                context.DrawLine(penBar, new Point(x, y), new Point(x, Bounds.Height + 0.5f));
-                // Lines between bars.
-                var timeSig = project.timeAxis.TimeSignatureAtBar(bar);
-                int nextBarTick = project.timeAxis.BarBeatToTickPos(bar + 1, 0);
-                int ticksPerBeat = project.resolution * 4 * timeSig.beatPerBar / timeSig.beatUnit;
-                int ticksPerLine = snapUnit;
-                if (ticksPerBeat < snapUnit) {
-                    ticksPerLine = ticksPerBeat;
-                } else if (ticksPerBeat % snapUnit != 0) {
-                    if (ticksPerBeat > minLineTick) {
-                        ticksPerLine = ticksPerBeat;
-                    } else {
-                        ticksPerLine = nextBarTick - barTick;
-                    }
-                }
-                if (nextBarTick > leftTick) {
-                    for (int tick = barTick + ticksPerLine; tick < nextBarTick; tick += ticksPerLine) {
-                        SnapTicks?.Add(tick);
-                        project.timeAxis.TickPosToBarBeat(tick, out int snapBar, out int snapBeat, out int snapRemainingTicks);
-                        var pen = snapRemainingTicks != 0 ? penDanshed : penBeatUnit;
-                        x = Math.Round(tick * TickWidth - pixelOffset) + 0.5;
-                        y = ShowBar ? 24 : 0;
-                        context.DrawLine(pen, new Point(x, y), new Point(x, Bounds.Height + 0.5f));
-                    }
-                }
-                barTick = nextBarTick;
-                bar++;
-            }
-            SnapTicks?.Add(barTick);
 
             if (ShowBar) {
                 foreach (var tempo in project.tempos) {
