@@ -85,7 +85,7 @@ dotnet run --project OpenUtau.UiTest/OpenUtau.UiTest.csproj
 
 ## 与上游的关系
 
-- 基于 [openutau/OpenUtau](https://github.com/openutau/OpenUtau) 的 `master`；本分支领先 **26 个提交**，**未删除任何上游代码**。
+- 基于 [openutau/OpenUtau](https://github.com/openutau/OpenUtau) 的 `master`；本分支领先 **29 个提交**，**未删除任何上游代码**。
 - **MIT 许可**，与上游相同（`LICENSE.txt`，© StAkira 及 OpenUtau 贡献者），本分支的全部改动沿用同一许可发布。
 - 与上游同步：
 
