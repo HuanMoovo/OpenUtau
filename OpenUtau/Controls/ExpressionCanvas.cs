@@ -83,6 +83,38 @@ namespace OpenUtau.App.Controls {
         private Geometry pointGeometry;
         private Geometry circleGeometry;
 
+        // Pens wrapping a theme brush. ThemeManager.LoadTheme replaces both its brushes
+        // and its pens with new instances, so a pen cached once would keep drawing the
+        // previous theme's colour; each one is rebuilt when the brush reference it was
+        // built from changes, which costs one reference compare per access. The dash
+        // patterns are shared because nothing mutates them.
+        private static readonly IDashStyle DashFourFour = new DashStyle(new double[] { 4, 4 }, 0);
+        private static readonly IDashStyle DashThreeTwo = new DashStyle(new double[] { 3, 2 }, 0);
+        private IBrush? cachedShadowBrush;
+        private Pen? cachedShadowPen;
+        private IBrush? cachedDashedBrush;
+        private Pen? cachedDashedPen;
+        private IBrush? cachedDashedSemiBrush;
+        private Pen? cachedDashedSemiPen;
+        private IBrush? cachedDrivenBrush;
+        private Pen? cachedDrivenPen;
+
+        // Shadow mode line and point pens: the neutral accent at 3 px.
+        private Pen ShadowPen => CachePen(ref cachedShadowBrush, ref cachedShadowPen, ThemeManager.NeutralAccentBrush, 3, null);
+        // Dashed neutral guides at 1 px, in the full and the semi accent.
+        private Pen DashedNeutralPen => CachePen(ref cachedDashedBrush, ref cachedDashedPen, ThemeManager.NeutralAccentBrush, 1, DashFourFour);
+        private Pen DashedNeutralSemiPen => CachePen(ref cachedDashedSemiBrush, ref cachedDashedSemiPen, ThemeManager.NeutralAccentBrushSemi, 1, DashFourFour);
+        // The final pitch the expression graph drives, dashed 3, 2 at 1.5 px.
+        private Pen DrivenPen => CachePen(ref cachedDrivenBrush, ref cachedDrivenPen, ThemeManager.FinalPitchBrush, 1.5, DashThreeTwo);
+
+        private static Pen CachePen(ref IBrush? cachedBrush, ref Pen? cachedPen, IBrush brush, double thickness, IDashStyle? dashStyle) {
+            if (cachedPen == null || !ReferenceEquals(cachedBrush, brush)) {
+                cachedBrush = brush;
+                cachedPen = new Pen(brush, thickness, dashStyle);
+            }
+            return cachedPen;
+        }
+
         public ExpressionCanvas() {
             ClipToBounds = true;
             pointGeometry = new EllipseGeometry(new Rect(-2.5, -2.5, 5, 5));
@@ -155,10 +187,10 @@ namespace OpenUtau.App.Controls {
                 double defaultHeight = Math.Round(Bounds.Height - Bounds.Height * (descriptor.defaultValue - descriptor.min) / (descriptor.max - descriptor.min));
                 
                 var lPen = DisplayMode == ExpDisMode.Shadow ? ThemeManager.NeutralAccentPen : ThemeManager.AccentPen1;
-                var lPen2 = DisplayMode == ExpDisMode.Shadow ? new Pen(ThemeManager.NeutralAccentBrush, 3) : ThemeManager.AccentPen1Thickness3;
+                var lPen2 = DisplayMode == ExpDisMode.Shadow ? ShadowPen : ThemeManager.AccentPen1Thickness3;
                 var lPenSelected = DisplayMode == ExpDisMode.Shadow ? ThemeManager.NeutralAccentPen : ThemeManager.AccentPen2;
-                var lPen2Selected = DisplayMode == ExpDisMode.Shadow ? new Pen(ThemeManager.NeutralAccentBrush, 3) : ThemeManager.AccentPen2Thickness3;
-                var lPen3 = new Pen(ThemeManager.NeutralAccentBrush, 1, new DashStyle(new double[] { 4, 4 }, 0));
+                var lPen2Selected = DisplayMode == ExpDisMode.Shadow ? ShadowPen : ThemeManager.AccentPen2Thickness3;
+                var lPen3 = DashedNeutralPen;
                 var brush = DisplayMode == ExpDisMode.Shadow ? ThemeManager.NeutralAccentBrush : ThemeManager.AccentBrush1;
                 
                 double x3 = Math.Round(viewModel.TickToneToPoint(leftTick, 0).X);
@@ -300,13 +332,13 @@ namespace OpenUtau.App.Controls {
             if (descriptor.type == UExpressionType.Numerical) {
                 double p1 = Math.Round(viewModel.TickToneToPoint(leftTick, 0).X);
                 double p2 = Math.Round(viewModel.TickToneToPoint(rightTick, 0).X);
-                var dashedPen = new Pen(ThemeManager.NeutralAccentBrushSemi, 1, new DashStyle(new double[] { 4, 4 }, 0));
+                var dashedPen = DashedNeutralSemiPen;
                 double defaultHeight = Math.Round(Bounds.Height - Bounds.Height * (descriptor.defaultValue - descriptor.min) / (descriptor.max - descriptor.min));
                 context.DrawLine(dashedPen, new Point(p1, defaultHeight), new Point(p2, defaultHeight));
             }
             var drivenValues = DrivenPhonemeValues();
-            var shadowHPen = new Pen(ThemeManager.NeutralAccentBrush, 3);
-            var shadowVPen = new Pen(ThemeManager.NeutralAccentBrush, 3);
+            var shadowHPen = ShadowPen;
+            var shadowVPen = ShadowPen;
 
             foreach (var phoneme in Part.phonemes) {
                 if (phoneme.Error || phoneme.Parent == null) {
@@ -393,8 +425,6 @@ namespace OpenUtau.App.Controls {
             }
         }
 
-        static IPen DrivenPen => new Pen(ThemeManager.FinalPitchBrush, 1.5, new DashStyle(new double[] { 3, 2 }, 0));
-
         /// <summary>A masked curve's runs; nothing is drawn where it has no value.</summary>
         private void DrawMaskedCurve(DrawingContext context, NotesViewModel viewModel, UExpressionDescriptor descriptor,
                 double leftTick, double rightTick) {
@@ -402,7 +432,7 @@ namespace OpenUtau.App.Controls {
             if (curve == null) {
                 return;
             }
-            var pen = DisplayMode == ExpDisMode.Shadow ? new Pen(ThemeManager.NeutralAccentBrush, 3) : ThemeManager.AccentPen1Thickness3;
+            var pen = DisplayMode == ExpDisMode.Shadow ? ShadowPen : ThemeManager.AccentPen1Thickness3;
             foreach (var run in curve.runs) {
                 if (run.End < leftTick || run.x > rightTick) {
                     continue;

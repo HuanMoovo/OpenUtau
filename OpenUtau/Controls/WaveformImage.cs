@@ -2,6 +2,7 @@
 using Avalonia;
 using Avalonia.Controls;
 using Avalonia.Media;
+using Avalonia.Threading;
 using OpenUtau.App.ViewModels;
 using OpenUtau.Core;
 using OpenUtau.Core.Ustx;
@@ -45,6 +46,10 @@ namespace OpenUtau.App.Controls {
         private const int SampleRate = 44100;
         private const int Channels = 2;
         private static readonly IBrush Fill = new SolidColorBrush(Color.FromArgb(0x7F, 0x7F, 0x7F, 0x7F));
+        // Rebuilding the envelope mixes the visible range plus its margins (up to a
+        // few million floats) on the UI thread, so deliveries are folded into one
+        // rebuild per interval instead of one per delivery.
+        private const double RebuildIntervalMs = 100;
 
         private double tickWidth;
         private double tickOffset;
@@ -52,13 +57,40 @@ namespace OpenUtau.App.Controls {
 
         private readonly WaveformEnvelope envelope = new WaveformEnvelope();
         private float[] sampleData = new float[0];
+        private readonly DispatcherTimer rebuildTimer;
+        private bool rebuildPending;
+        // The single lane spanning the whole control, reused across frames. It is
+        // replaced, never mutated, when the height changes: the envelope keeps the
+        // array reference it was given and compares lanes by value, so writing in
+        // place would hide the new height from it.
+        private (double y, double height)[] lanes = new (double y, double height)[] { (0.0, 0.0) };
 
         public WaveformImage() {
-            // The projection payload is not read here; deliveries mean new audio.
-            OpenUtau.Core.Render.RenderView.Inst.Observe(_ => {
+            rebuildTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(RebuildIntervalMs) };
+            rebuildTimer.Tick += (_, _) => {
+                rebuildTimer.Stop();
+                rebuildPending = false;
                 envelope.Invalidate();
                 InvalidateVisual();
-            });
+            };
+            // The projection payload is not read here; deliveries mean new audio.
+            OpenUtau.Core.Render.RenderView.Inst.Observe(_ => ScheduleRebuild());
+        }
+
+        // Deliveries arrive as often as phrases finish rendering (RenderView already
+        // coalesces them to 60 Hz), and every one of them used to force a full
+        // envelope rebuild in the next Render, which stutters playback of a large
+        // project. The first delivery starts the timer and every delivery inside its
+        // window is folded into that single tick, so the envelope is rebuilt at most
+        // once per interval. The tick always runs, so a burst of deliveries cannot
+        // leave the wave stale; the drawn wave may trail the freshly rendered audio
+        // by up to one interval (~100 ms), which does not read as out of sync.
+        private void ScheduleRebuild() {
+            if (rebuildPending) {
+                return;
+            }
+            rebuildPending = true;
+            rebuildTimer.Start();
         }
 
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change) {
@@ -89,8 +121,13 @@ namespace OpenUtau.App.Controls {
             }
             double offsetPx = viewModel.TickOffset * viewModel.TickWidth * scale;
             int firstColumn = (int)Math.Floor(offsetPx);
+            if (lanes[0].height != height) {
+                // Replaced, never mutated: the envelope keeps this array and compares
+                // lanes by value, so writing in place would hide the new height.
+                lanes = new (double y, double height)[] { (0.0, height) };
+            }
             envelope.Update(project.timeAxis, part, viewModel.TickOrigin, viewModel.TickWidth * scale,
-                new[] { (0.0, height) }, firstColumn, firstColumn + width + 1, int.MinValue, int.MaxValue,
+                lanes, firstColumn, firstColumn + width + 1, int.MinValue, int.MaxValue,
                 (edges, min, max) => FillColumns(part, edges, min[0], max[0]));
             envelope.Draw(context, Bounds.Size, scale, Math.Round(-offsetPx), Fill);
         }
