@@ -5,6 +5,7 @@ using OpenUtau.Api;
 using OpenUtau.Core.Ustx;
 using System.Linq;
 using System.IO;
+using System.Text.RegularExpressions;
 using Serilog;
 using System.Threading.Tasks;
 using static OpenUtau.Api.Phonemizer;
@@ -654,6 +655,7 @@ namespace OpenUtau.Plugin.Builtin {
                 splittingReplacements.Clear();
                 yamlFallbacks.Clear();
                 PhonemeOverrides.Clear();
+                InvalidatePhonemeOverridesCache();
                 if (backupVowelSustains == null) backupVowelSustains = new Dictionary<string, (string, double)>(vowelSustains);
                 vowelSustains.Clear();
                 foreach (var kvp in backupVowelSustains) vowelSustains[kvp.Key] = kvp.Value;
@@ -795,6 +797,8 @@ namespace OpenUtau.Plugin.Builtin {
                         Log.Error($"Failed to parse {file}: {ex.Message}");
                     }
                 }
+
+            InvalidatePhonemeOverridesCache();
 
             if (!hasDictionary) {
                 ReadDictionaryAndInit();
@@ -1300,6 +1304,52 @@ namespace OpenUtau.Plugin.Builtin {
                 return overrideRatio;
             }
             return 1.0;
+        }
+
+        /// <summary>
+        /// Compiled form of <see cref="PhonemeOverrides"/>: one (symbol, regex, value) entry per
+        /// override, ordered by symbol length descending, with the boundary pattern built once.
+        /// Replaces the per-call OrderByDescending(kv => kv.Key.Length) + Regex.Escape + pattern
+        /// parse that every phoneme used to do.
+        /// </summary>
+        private (string symbol, Regex regex, double value)[] overrideLookupCache;
+
+        /// <summary>
+        /// Drops the compiled override lookup. Must be called after mutating <see cref="PhonemeOverrides"/>.
+        /// </summary>
+        protected void InvalidatePhonemeOverridesCache() {
+            overrideLookupCache = null;
+        }
+
+        /// <summary>
+        /// First <see cref="PhonemeOverrides"/> entry whose symbol matches <paramref name="alias"/> on
+        /// non-letter boundaries, longest symbol first. Same key order, same first-match-wins result
+        /// and same multiplier as the per-call sort + Regex.IsMatch loop it replaces.
+        /// </summary>
+        protected bool TryGetOverrideMultiplier(string alias, out double multiplier) {
+            multiplier = 1.0;
+            var cache = overrideLookupCache ?? BuildPhonemeOverrideLookup();
+            for (int i = 0; i < cache.Length; i++) {
+                var entry = cache[i];
+                if (entry.regex.IsMatch(alias)) {
+                    multiplier = entry.value;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        private (string symbol, Regex regex, double value)[] BuildPhonemeOverrideLookup() {
+            var overrides = PhonemeOverrides;
+            if (overrides == null || overrides.Count == 0) {
+                return overrideLookupCache = Array.Empty<(string, Regex, double)>();
+            }
+            var cache = new (string symbol, Regex regex, double value)[overrides.Count];
+            int i = 0;
+            foreach (var kvp in overrides.OrderByDescending(kv => kv.Key.Length)) {
+                cache[i++] = (kvp.Key, new Regex($@"(?<![a-zA-Z]){Regex.Escape(kvp.Key)}(?![a-zA-Z])"), kvp.Value);
+            }
+            return overrideLookupCache = cache;
         }
 
         /// <summary>

@@ -10,7 +10,6 @@ using OpenUtau.Core.Ustx;
 using Serilog;
 using YamlDotNet.Serialization;
 using YamlDotNet.Serialization.NamingConventions;
-using System.Text.RegularExpressions;
 
 namespace OpenUtau.Plugin.Builtin {
     [Phonemizer("English C+V Phonemizer", "EN C+V", "Cadlaxa", language: "EN")]
@@ -713,18 +712,10 @@ namespace OpenUtau.Plugin.Builtin {
             var tap_def = 0.5;
             var affricate_def = 1.3;
 
-            var sortedOverrides = PhonemeOverrides.OrderByDescending(kv => kv.Key.Length);
-            foreach (var kvp in sortedOverrides) {
-                var symbol = kvp.Key;
-                var value = kvp.Value;
-
-                if (IsEndingAlias(alias) && symbol != alias) {
-                    continue;
-                }
-
-                if (Regex.IsMatch(alias, $@"(?<![a-zA-Z]){Regex.Escape(symbol)}(?![a-zA-Z])")) {
-                    return baseMultiplier * value;
-                }
+            // The old loop skipped entries whose symbol != alias when IsEndingAlias(alias), but
+            // ending aliases already returned 1.0 above, so the lookup below is equivalent.
+            if (TryGetOverrideMultiplier(alias, out double overrideMultiplier)) {
+                return baseMultiplier * overrideMultiplier;
             }
 
             foreach (var c in fricative) {

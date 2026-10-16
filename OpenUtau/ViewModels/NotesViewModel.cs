@@ -116,6 +116,10 @@ namespace OpenUtau.App.ViewModels {
         private int playPosTick;
         private UNote[] playbackNotes = Array.Empty<UNote>();
         private string? portraitSource;
+        // Cache key of the loaded portrait: source path, plus the height/opacity it was built
+        // with, so a live character.yaml edit (or a Preferences override) is picked up.
+        private int portraitSourceHeight;
+        private float portraitSourceOpacity;
         private readonly object portraitLock = new object();
         private int userSnapDiv = -2;
         private int userKey => Project.key;
@@ -580,13 +584,24 @@ namespace OpenUtau.App.ViewModels {
                 }
                 return;
             }
-            if (portraitSource != singer.Portrait) {
+            // Editor-wide overrides; 0 means "use the voicebank's value".
+            int effectiveHeight = Preferences.Default.PortraitHeight != 0
+                ? Preferences.Default.PortraitHeight
+                : singer.PortraitHeight;
+            float effectiveOpacity = Preferences.Default.PortraitOpacity != 0
+                ? Preferences.Default.PortraitOpacity
+                : singer.PortraitOpacity;
+            if (portraitSource != singer.Portrait
+                || portraitSourceHeight != effectiveHeight
+                || portraitSourceOpacity != effectiveOpacity) {
                 lock (portraitLock) {
                     Portrait?.Dispose();
                     Portrait = null;
                     portraitSource = null;
+                    portraitSourceHeight = effectiveHeight;
+                    portraitSourceOpacity = effectiveOpacity;
                 }
-                PortraitMask = new SolidColorBrush(Avalonia.Media.Colors.White, singer.PortraitOpacity);
+                PortraitMask = new SolidColorBrush(Avalonia.Media.Colors.White, effectiveOpacity);
                 Task.Run(() => {
                     lock (portraitLock) {
                         try {
@@ -596,7 +611,7 @@ namespace OpenUtau.App.ViewModels {
                                 portraitSource = null;
                             } else {
                                 using (var stream = new MemoryStream(data)) {
-                                    Portrait = ResizePortrait(new Bitmap(stream), singer.PortraitHeight);
+                                    Portrait = ResizePortrait(new Bitmap(stream), effectiveHeight);
                                     portraitSource = singer.Portrait;
                                 }
                             }

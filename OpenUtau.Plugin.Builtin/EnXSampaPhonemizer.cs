@@ -10,7 +10,6 @@ using OpenUtau.Core.G2p;
 using OpenUtau.Core.Ustx;
 using Serilog;
 using YamlDotNet.Core.Tokens;
-using System.Text.RegularExpressions;
 
 namespace OpenUtau.Plugin.Builtin {
     /// <summary>
@@ -827,14 +826,8 @@ namespace OpenUtau.Plugin.Builtin {
         protected override double GetTransitionBasicLengthMs(string alias, int tone, PhonemeAttributes attr) {
             double otoLength = GetTransitionBasicLengthMsByOto(alias, tone, attr);
 
-            var sortedOverrides = PhonemeOverrides.OrderByDescending(kv => kv.Key.Length);
-            foreach (var kvp in sortedOverrides) {
-                var symbol = kvp.Key;
-                var value = kvp.Value;
-
-                if (Regex.IsMatch(alias, $@"(?<![a-zA-Z]){Regex.Escape(symbol)}(?![a-zA-Z])")) {
-                    return GetTransitionBasicLengthMsByConstant() * value;
-                }
+            if (TryGetOverrideMultiplier(alias, out double overrideMultiplier)) {
+                return GetTransitionBasicLengthMsByConstant() * overrideMultiplier;
             }
 
             return otoLength;
