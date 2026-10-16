@@ -2,7 +2,7 @@
 
 [English](README.md) · **简体中文**
 
-[![Fork release](https://img.shields.io/github/v/release/HuanMoovo/OpenUtau?style=for-the-badge&label=fork%20release&color=4ea6ea)](https://github.com/HuanMoovo/OpenUtau/releases/tag/v0.1.565-fork.1)
+[![Fork release](https://img.shields.io/github/v/release/HuanMoovo/OpenUtau?style=for-the-badge&label=fork%20release&color=4ea6ea)](https://github.com/HuanMoovo/OpenUtau/releases/tag/v0.1.565-fork.2)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE.txt)
 [![Based on openutau/OpenUtau](https://img.shields.io/badge/based%20on-openutau%2FOpenUtau-6E9FD4?style=for-the-badge)](https://github.com/openutau/OpenUtau)
 
@@ -11,7 +11,7 @@
 
 ## 本分支是什么
 
-- 是 OpenUtau 的**增强分支**，跟踪**上游 `master`**。本分支 `master` 当前**领先上游 24 个提交**（[对比](https://github.com/HuanMoovo/OpenUtau/compare/13184085f2cee51c174de9ee99163a76ee970e8c...master)）。
+- 是 OpenUtau 的**增强分支**，跟踪**上游 `master`**。本分支 `master` 当前**领先上游 26 个提交**（[对比](https://github.com/HuanMoovo/OpenUtau/compare/13184085f2cee51c174de9ee99163a76ee970e8c...master)）。
 - **MIT 许可**，与上游相同 —— 见 `LICENSE.txt`（© StAkira 及 OpenUtau 贡献者）。**未删除任何上游代码**；上游原版 README 完整保留在 [README.md](README.md) 末尾。
 - 改动范围：大工程性能、仿 Synthesizer V Studio 的黑灰默认界面、歌手立绘自动识别，以及一批上游跟踪的 BUG 修复。
 
@@ -33,13 +33,13 @@
 
 ### 🐞 修复
 - 上游跟踪的 BUG 修复：切换歌手或编辑音符后的**残留 PCM**；退化速度值导致的 **NaN `TimeSpan`**；超长音符导致的**音高数组内存溢出**；**多声道波形部件加载失败**；越界 skip / trim **导致播放崩溃**。
-- 测试规模：Core **643 → 716**，UI **10 → 43**（UI 套件为无头 Avalonia 测试，驱动真实指针 / 键盘事件并保存截图）。
+- 测试规模：Core **643 → 716**，UI **10 → 46**（UI 套件为无头 Avalonia 测试，驱动真实指针 / 键盘事件并保存截图）。
 
 ## 下载与安装
 
-[![Download OpenUtau-fork-win-x64.zip](https://img.shields.io/static/v1?style=for-the-badge&logo=github&label=download&message=v0.1.565-fork.1&labelColor=FF347C&color=4ea6ea)](https://github.com/HuanMoovo/OpenUtau/releases/tag/v0.1.565-fork.1)
+[![Download OpenUtau-fork-win-x64-v2.zip](https://img.shields.io/static/v1?style=for-the-badge&logo=github&label=download&message=v0.1.565-fork.2&labelColor=FF347C&color=4ea6ea)](https://github.com/HuanMoovo/OpenUtau/releases/tag/v0.1.565-fork.2)
 
-最新分支版本：**[v0.1.565-fork.1](https://github.com/HuanMoovo/OpenUtau/releases/tag/v0.1.565-fork.1)** → `OpenUtau-fork-win-x64.zip`（约 168 MB）
+最新分支版本：**[v0.1.565-fork.2](https://github.com/HuanMoovo/OpenUtau/releases/tag/v0.1.565-fork.2)** → `OpenUtau-fork-win-x64-v2.zip`（约 168 MB）
 
 1. 从 Release 页**下载** zip，**解压**到任意目录（如 `D:\OpenUtau`）。
 2. 双击 **`OpenUtau.exe` 运行** —— 这是 **self-contained Windows x64 构建**：已内置 .NET 运行时，**无需安装任何额外软件**（Windows 10 / 11 x64）。
@@ -62,7 +62,7 @@ dotnet build OpenUtau/OpenUtau.csproj
 # Core 测试：716 通过，2 跳过（在线测试）
 dotnet run --project OpenUtau.Test/OpenUtau.Test.csproj
 
-# 无头 UI 测试：43 通过
+# 无头 UI 测试：46 通过
 dotnet run --project OpenUtau.UiTest/OpenUtau.UiTest.csproj
 ```
 
@@ -70,7 +70,7 @@ dotnet run --project OpenUtau.UiTest/OpenUtau.UiTest.csproj
 
 ## 与上游的关系
 
-- 基于 [openutau/OpenUtau](https://github.com/openutau/OpenUtau) 的 `master`；本分支领先 **24 个提交**，**未删除任何上游代码**。
+- 基于 [openutau/OpenUtau](https://github.com/openutau/OpenUtau) 的 `master`；本分支领先 **26 个提交**，**未删除任何上游代码**。
 - **MIT 许可**，与上游相同（`LICENSE.txt`，© StAkira 及 OpenUtau 贡献者），本分支的全部改动沿用同一许可发布。
 - 与上游同步：
 

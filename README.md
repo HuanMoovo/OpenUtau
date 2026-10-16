@@ -2,7 +2,7 @@
 
 **English** · [简体中文](README.zh-CN.md)
 
-[![Fork release](https://img.shields.io/github/v/release/HuanMoovo/OpenUtau?style=for-the-badge&label=fork%20release&color=4ea6ea)](https://github.com/HuanMoovo/OpenUtau/releases/tag/v0.1.565-fork.1)
+[![Fork release](https://img.shields.io/github/v/release/HuanMoovo/OpenUtau?style=for-the-badge&label=fork%20release&color=4ea6ea)](https://github.com/HuanMoovo/OpenUtau/releases/tag/v0.1.565-fork.2)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue?style=for-the-badge)](LICENSE.txt)
 [![Based on openutau/OpenUtau](https://img.shields.io/badge/based%20on-openutau%2FOpenUtau-6E9FD4?style=for-the-badge)](https://github.com/openutau/OpenUtau)
 
@@ -12,7 +12,7 @@
 
 ## What is this branch? / 本分支是什么
 
-- An **enhancement branch** of OpenUtau tracking **upstream `master`**. This fork's `master` is currently **24 commits ahead** of upstream ([compare](https://github.com/HuanMoovo/OpenUtau/compare/13184085f2cee51c174de9ee99163a76ee970e8c...master)).
+- An **enhancement branch** of OpenUtau tracking **upstream `master`**. This fork's `master` is currently **26 commits ahead** of upstream ([compare](https://github.com/HuanMoovo/OpenUtau/compare/13184085f2cee51c174de9ee99163a76ee970e8c...master)).
 - **MIT licensed**, same as upstream — see `LICENSE.txt` (© StAkira / OpenUtau contributors). **No upstream code has been removed**; upstream's original README is kept unchanged at the bottom of this page.
 - Scope: performance of large projects, a Synthesizer V Studio–style black-gray default UI, singer portrait auto-detection, and fixes for bugs tracked upstream.
 
@@ -34,13 +34,13 @@
 
 ### 🐞 修复 · Bug fixes
 - Upstream-tracker fixes: **stale PCM** after switching singer or editing notes; a **NaN `TimeSpan`** from degenerate tempo; **pitch-array OOM** on absurd note lengths; **multichannel wave parts failing to load**; **out-of-range skip/trim** crashing playback.
-- The test suites grew from **643 → 716** (Core) and **10 → 43** (UI) — the UI suite is a headless Avalonia harness that drives real pointer / key events and saves screenshots.
+- The test suites grew from **643 → 716** (Core) and **10 → 46** (UI) — the UI suite is a headless Avalonia harness that drives real pointer / key events and saves screenshots.
 
 ## Download & install
 
-[![Download OpenUtau-fork-win-x64.zip](https://img.shields.io/static/v1?style=for-the-badge&logo=github&label=download&message=v0.1.565-fork.1&labelColor=FF347C&color=4ea6ea)](https://github.com/HuanMoovo/OpenUtau/releases/tag/v0.1.565-fork.1)
+[![Download OpenUtau-fork-win-x64-v2.zip](https://img.shields.io/static/v1?style=for-the-badge&logo=github&label=download&message=v0.1.565-fork.2&labelColor=FF347C&color=4ea6ea)](https://github.com/HuanMoovo/OpenUtau/releases/tag/v0.1.565-fork.2)
 
-Latest fork release: **[v0.1.565-fork.1](https://github.com/HuanMoovo/OpenUtau/releases/tag/v0.1.565-fork.1)** → `OpenUtau-fork-win-x64.zip` (≈168 MB)
+Latest fork release: **[v0.1.565-fork.2](https://github.com/HuanMoovo/OpenUtau/releases/tag/v0.1.565-fork.2)** → `OpenUtau-fork-win-x64-v2.zip` (≈168 MB)
 
 1. **Download** the zip from the release page and **unpack** it anywhere (e.g. `D:\OpenUtau`).
 2. **Run `OpenUtau.exe`** — this is a **self-contained Windows x64 build**: the .NET runtime is bundled, nothing else to install (Windows 10 / 11 x64).
@@ -63,7 +63,7 @@ dotnet build OpenUtau/OpenUtau.csproj
 # Core tests: 716 pass, 2 skipped (live tests)
 dotnet run --project OpenUtau.Test/OpenUtau.Test.csproj
 
-# Headless UI tests: 43 pass
+# Headless UI tests: 46 pass
 dotnet run --project OpenUtau.UiTest/OpenUtau.UiTest.csproj
 ```
 
@@ -71,7 +71,7 @@ Note: the suites use xunit v3 on Microsoft.Testing.Platform — `dotnet test --f
 
 ## Relationship to upstream
 
-- Built on [openutau/OpenUtau](https://github.com/openutau/OpenUtau) `master`; this fork's `master` is **24 commits ahead**, and **no upstream code was removed** — upstream's original README is kept unchanged at the bottom of this page.
+- Built on [openutau/OpenUtau](https://github.com/openutau/OpenUtau) `master`; this fork's `master` is **26 commits ahead**, and **no upstream code was removed** — upstream's original README is kept unchanged at the bottom of this page.
 - **MIT License**, unchanged (`LICENSE.txt`, © StAkira / OpenUtau contributors). All fork changes are released under the same license.
 - Sync with upstream like any fork:
 
