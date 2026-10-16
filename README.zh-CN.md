@@ -1,5 +1,7 @@
 # OpenUtau 增强分支（HuanMoovo fork）
 
+<img src="docs/brand/mark-dark.png" alt="OpenUtau" width="120">
+
 [English](README.md) · **简体中文**
 
 [![Fork release](https://img.shields.io/github/v/release/HuanMoovo/OpenUtau?style=for-the-badge&label=fork%20release&color=4ea6ea)](https://github.com/HuanMoovo/OpenUtau/releases/tag/v0.1.565-fork.2)
@@ -33,7 +35,20 @@
 
 ### 🐞 修复
 - 上游跟踪的 BUG 修复：切换歌手或编辑音符后的**残留 PCM**；退化速度值导致的 **NaN `TimeSpan`**；超长音符导致的**音高数组内存溢出**；**多声道波形部件加载失败**；越界 skip / trim **导致播放崩溃**。
-- 测试规模：Core **643 → 716**，UI **10 → 46**（UI 套件为无头 Avalonia 测试，驱动真实指针 / 键盘事件并保存截图）。
+- 测试规模：Core **643 → 768**，UI **10 → 46**（UI 套件为无头 Avalonia 测试，驱动真实指针 / 键盘事件并保存截图）。
+
+## 截图
+
+![编辑器](docs/screenshots/01-editor.png)
+**编辑器** —— 单行紧凑工具栏、左侧「编排」轨道列表、右侧带歌手模型图横幅的「歌声」检视器，以及最右侧图标条。
+
+![钢琴卷帘](docs/screenshots/02-piano-roll.png)
+**钢琴卷帘** —— 打开片段后的卷帘视图，含音符编辑工具栏与参数曲线条。
+
+![歌手](docs/screenshots/04-singers.png)
+**歌手** —— 「歌手」窗口：DiffSinger 声库的模型图、元数据与音素表。
+
+**品牌素材：**[品牌预览图](docs/brand/brand-sheet-dark.png) · 标志 [`Logo/openutau.svg`](Logo/openutau.svg) · 字标 [`Logo/openutau_logotype.svg`](Logo/openutau_logotype.svg)
 
 ## 下载与安装
 
@@ -59,7 +74,7 @@ cd OpenUtau
 # 构建应用（Debug 为默认配置，测试也基于它运行）
 dotnet build OpenUtau/OpenUtau.csproj
 
-# Core 测试：716 通过，2 跳过（在线测试）
+# Core 测试：768 通过，2 跳过（在线测试）
 dotnet run --project OpenUtau.Test/OpenUtau.Test.csproj
 
 # 无头 UI 测试：46 通过

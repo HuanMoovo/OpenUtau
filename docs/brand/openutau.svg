@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256" role="img" aria-labelledby="t">
+  <title id="t">OpenUtau mark</title>
+  <!-- Shapes are vector only: no embedded raster, no font dependency, renders on transparent backgrounds. -->
+  <path d="M72,62 V138 A56,56 0 0 0 184,138 V62" fill="none" stroke="#6E9FD4" stroke-width="34" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M100,95 C114,95 118,75 132,75" fill="none" stroke="#3A6E9E" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="152" cy="75" r="8" fill="#C9B77E"/>
+</svg>

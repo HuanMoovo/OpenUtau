@@ -1,5 +1,7 @@
 # OpenUtau — 增强分支 · HuanMoovo Enhancement Fork
 
+<img src="docs/brand/mark-dark.png" alt="OpenUtau" width="120">
+
 **English** · [简体中文](README.zh-CN.md)
 
 [![Fork release](https://img.shields.io/github/v/release/HuanMoovo/OpenUtau?style=for-the-badge&label=fork%20release&color=4ea6ea)](https://github.com/HuanMoovo/OpenUtau/releases/tag/v0.1.565-fork.2)
@@ -34,7 +36,20 @@
 
 ### 🐞 修复 · Bug fixes
 - Upstream-tracker fixes: **stale PCM** after switching singer or editing notes; a **NaN `TimeSpan`** from degenerate tempo; **pitch-array OOM** on absurd note lengths; **multichannel wave parts failing to load**; **out-of-range skip/trim** crashing playback.
-- The test suites grew from **643 → 716** (Core) and **10 → 46** (UI) — the UI suite is a headless Avalonia harness that drives real pointer / key events and saves screenshots.
+- The test suites grew from **643 → 768** (Core) and **10 → 46** (UI) — the UI suite is a headless Avalonia harness that drives real pointer / key events and saves screenshots.
+
+## Screenshots
+
+![Editor](docs/screenshots/01-editor.png)
+**Editor** — one compact toolbar row, the 编排 track list on the left, the 歌声 inspector with the singer model-image banner on the right, and the far-right icon strip.
+
+![Piano roll](docs/screenshots/02-piano-roll.png)
+**Piano roll** — a part opened in the roll, with the note-editing toolbar and expression lanes.
+
+![Singers](docs/screenshots/04-singers.png)
+**Singers** — the 歌手 dialog: a DiffSinger voicebank's model image, metadata and phoneme table.
+
+**Brand assets:** [brand sheet](docs/brand/brand-sheet-dark.png) · mark [`Logo/openutau.svg`](Logo/openutau.svg) · logotype [`Logo/openutau_logotype.svg`](Logo/openutau_logotype.svg)
 
 ## Download & install
 
@@ -60,7 +75,7 @@ cd OpenUtau
 # Build the app (Debug is the default and what the test suites run against)
 dotnet build OpenUtau/OpenUtau.csproj
 
-# Core tests: 716 pass, 2 skipped (live tests)
+# Core tests: 768 pass, 2 skipped (live tests)
 dotnet run --project OpenUtau.Test/OpenUtau.Test.csproj
 
 # Headless UI tests: 46 pass
