@@ -1,6 +1,8 @@
 # OpenUtau — 增强分支 · HuanMoovo Enhancement Fork
 
-<img src="docs/brand/mark-dark.png" alt="OpenUtau" width="120">
+<p align="center">
+  <img src="docs/brand/mark-dark.png" alt="OpenUtau" width="120">
+</p>
 
 **English** · [简体中文](README.zh-CN.md)
 
