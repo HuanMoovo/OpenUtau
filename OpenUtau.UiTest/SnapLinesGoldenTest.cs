@@ -108,6 +108,11 @@ namespace OpenUtau.UiTest {
             var project = NewProject();
             try {
                 HeadlessUi.Run(() => {
+                    // The classes are separate xunit collections, so this one can be the first to run.
+                    // ExecuteCmd posts to the UI thread DocManager was initialized with, so without
+                    // this the first command here dereferences a null PostOnUIThread (see the NRE at
+                    // DocManager.ExecuteCmd). Initialize up front, like the other tests in this project.
+                    MainWindowTest.InitCore();
                     var notesViewModel = new NotesViewModel();
                     DocManager.Inst.ExecuteCmd(new LoadProjectNotification(project));
                     body(project, notesViewModel);

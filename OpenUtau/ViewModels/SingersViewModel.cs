@@ -349,6 +349,25 @@ namespace OpenUtau.App.ViewModels {
             DocManager.Inst.ExecuteCmd(new LoadingNotification(typeof(SingersDialog), false, "singer"));
         }
 
+        /// <summary>
+        /// Removes the selected singer. A singer installed in OpenUtau's own singer folder is
+        /// deleted from disk; a singer found anywhere else is removed from the list only, and its
+        /// files are left in place. See <see cref="SingerManager.RemoveSinger"/>.
+        /// </summary>
+        /// <returns>True when the singer's files were deleted from disk.</returns>
+        public bool DeleteSinger() {
+            if (Singer == null) {
+                return false;
+            }
+            bool deletedFiles = SingerManager.Inst.RemoveSinger(Singer);
+            this.RaisePropertyChanged(nameof(Singers));
+            Singer = Singers.FirstOrDefault();
+            // Tracks that used the singer keep pointing at it; this is what turns them into
+            // "missing singer", the same way a refresh of the singer list does.
+            DocManager.Inst.ExecuteCmd(new SingersRefreshedNotification());
+            return deletedFiles;
+        }
+
         Bitmap? LoadAvatar(USinger singer) {
             if (singer.AvatarData == null) {
                 return null;

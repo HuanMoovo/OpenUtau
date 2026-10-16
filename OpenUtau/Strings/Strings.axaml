@@ -890,6 +890,11 @@ The voicebank may not work on another OS.</system:String>
   <system:String x:Key="singererror.yamlnotfound">character.yaml not found.</system:String>
 
   <system:String x:Key="singers.caption">Singers</system:String>
+  <system:String x:Key="singers.delete">Delete Singer</system:String>
+  <system:String x:Key="singers.delete.caption">Delete Singer</system:String>
+  <system:String x:Key="singers.delete.confirm">Delete singer {0}?&#10;&#10;Its files will be deleted from&#10;{1}&#10;&#10;This cannot be undone.</system:String>
+  <system:String x:Key="singers.delete.confirm.external">Remove singer {0} from the list?&#10;&#10;Its files are not in OpenUtau's singer folder, so nothing is deleted from disk:&#10;{1}</system:String>
+  <system:String x:Key="singers.delete.removedfromlist">Singer removed from the list.&#10;&#10;Its files are outside OpenUtau's singer folder and were left in place:&#10;{0}</system:String>
   <system:String x:Key="singers.editoto.editinsetparam">Edit In setParam</system:String>
   <system:String x:Key="singers.editoto.editinvlabeler">Edit In vLabeler</system:String>
   <system:String x:Key="singers.editoto.gotosource">Goto Source File</system:String>

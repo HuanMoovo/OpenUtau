@@ -221,6 +221,44 @@ namespace OpenUtau.App.Views {
             viewModel.SetUseFilenameAsAlias();
         }
 
+        async void OnDeleteSinger(object sender, RoutedEventArgs args) {
+            var viewModel = (DataContext as SingersViewModel)!;
+            var singer = viewModel.Singer;
+            if (singer == null) {
+                return;
+            }
+            // Confirmations say exactly what happens: singers installed in OpenUtau's own singer
+            // folder are deleted from disk, singers found anywhere else are removed from the list
+            // and keep their files (see SingerManager.RemoveSinger).
+            string caption = ThemeManager.GetString("singers.delete.caption");
+            var result = await MessageBox.Show(
+                this,
+                string.Format(
+                    ThemeManager.GetString(SingerManager.IsInstalledInOpenUtauFolder(singer)
+                        ? "singers.delete.confirm"
+                        : "singers.delete.confirm.external"),
+                    singer.LocalizedName,
+                    singer.Location),
+                caption,
+                MessageBox.MessageBoxButtons.YesNo);
+            if (result != MessageBox.MessageBoxResult.Yes) {
+                return;
+            }
+            try {
+                if (!viewModel.DeleteSinger()) {
+                    // Kept on disk: the singer keeps its files somewhere the app does not manage.
+                    await MessageBox.Show(
+                        this,
+                        string.Format(ThemeManager.GetString("singers.delete.removedfromlist"), singer.Location),
+                        caption,
+                        MessageBox.MessageBoxButtons.Ok);
+                }
+            } catch (Exception e) {
+                Log.Error(e, "Failed to delete singer");
+                _ = await MessageBox.ShowError(this, e);
+            }
+        }
+
         async void OnEditSubbanksButton(object sender, RoutedEventArgs args) {
             var viewModel = (DataContext as SingersViewModel)!;
             if (viewModel.Singer == null) {

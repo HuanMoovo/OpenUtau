@@ -143,5 +143,71 @@ namespace OpenUtau.Core {
             //Update singers used
             singersUsed = singersInUse;
         }
+
+        /// <summary>
+        /// Removes an installed singer from the singer list. The singer's files are deleted only
+        /// when it lives in OpenUtau's own singer folder, which is where installing a voicebank
+        /// puts it; a singer found anywhere else, such as an additional singer folder the user
+        /// configured, is only unregistered, so files outside OpenUtau's own storage are never
+        /// deleted. UI thread only: it mutates the singer map the UI reads.
+        /// </summary>
+        /// <returns>True when the singer's files were removed from disk.</returns>
+        public bool RemoveSinger(USinger singer) {
+            Util.ThreadGuard.AssertUi();
+            if (singer == null || !Singers.Remove(singer.Id)) {
+                return false;
+            }
+            if (SingerGroups.TryGetValue(singer.SingerType, out var group)) {
+                group.RemoveAll(s => s.Equals(singer));
+            }
+            // The favorites and recents are keyed by singer id, so they go with the singer.
+            Preferences.Default.FavoriteSingers?.Remove(singer.Id);
+            Preferences.Default.RecentSingers?.Remove(singer.Id);
+            Preferences.Save();
+            (singer as IDisposable)?.Dispose();
+            return DeleteSingerFiles(singer);
+        }
+
+        /// <summary>
+        /// True when the singer is installed in OpenUtau's own singer folder, which is the only
+        /// place <see cref="RemoveSinger"/> deletes from.
+        /// </summary>
+        public static bool IsInstalledInOpenUtauFolder(USinger singer) =>
+            singer != null && IsInOpenUtauStorage(singer.Location);
+
+        static bool IsInOpenUtauStorage(string location) {
+            return !string.IsNullOrEmpty(location)
+                && (IsStrictlyInside(location, PathManager.Inst.SingersPath)
+                    || IsStrictlyInside(location, PathManager.Inst.SingersPathOld));
+        }
+
+        // The path must be strictly below the root: the root itself is not the singer's own entry.
+        static bool IsStrictlyInside(string path, string root) {
+            string relative = Path.GetRelativePath(root, path);
+            return relative != "." && !relative.StartsWith("..") && !Path.IsPathRooted(relative);
+        }
+
+        // Deletes the installed singer: the whole folder for a voicebank folder, the archive
+        // itself for a single-file singer. Nothing outside OpenUtau's own singer folder is ever
+        // touched, so a singer the user keeps elsewhere keeps its files.
+        static bool DeleteSingerFiles(USinger singer) {
+            string location = singer.Location;
+            if (!IsInOpenUtauStorage(location)) {
+                Log.Information($"Left files of {singer.Id} in place: {location}");
+                return false;
+            }
+            try {
+                if (Directory.Exists(location)) {
+                    Directory.Delete(location, true);
+                } else if (File.Exists(location)) {
+                    File.Delete(location);
+                }
+                Log.Information($"Deleted singer {singer.Id} from {location}");
+                return true;
+            } catch (Exception e) {
+                Log.Error(e, $"Failed to delete singer {singer.Id} at {location}");
+                return false;
+            }
+        }
     }
 }

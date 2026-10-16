@@ -85,6 +85,8 @@
             <MenuItem Header="{DynamicResource singers.merge}" IsVisible="{Binding IsClassic}" Click="OnMerge"/>
             <MenuItem Header="{DynamicResource singers.errorreport}" Command="{Binding ErrorReport}"/>
             <MenuItem Header="{DynamicResource singers.refresh}" Command="{Binding Refresh}"/>
+            <Separator/>
+            <MenuItem Header="{DynamicResource singers.delete}" Click="OnDeleteSinger"/>
           </ContextMenu>
         </Button.ContextMenu>
       </Button>
