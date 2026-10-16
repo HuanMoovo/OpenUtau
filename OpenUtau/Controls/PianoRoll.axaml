@@ -111,12 +111,18 @@
               PointerPressed="TimelinePointerPressed"
               PointerMoved="TimelinePointerMoved"
               PointerReleased="TimelinePointerReleased"
+              PointerExited="TimelinePointerExited"
               DoubleTapped="TimelineDoubleTapped">
         <Path Name="PlayPos"
               Canvas.Left="{Binding NotesViewModel.PlayPosX}"
               Canvas.Top="0" ZIndex="100" IsHitTestVisible="False"
               Fill="{DynamicResource NeutralAccentBrushSemi}"
               Data="M -6.5 0 L 6.5 0 L 6.5 3 L 0 9 L -6.5 3 Z"/>
+        <!-- Line shown at the drop position while a tempo marker is dragged. -->
+        <Border Name="TempoDragPreview"
+                Canvas.Top="0" Width="1" Height="24" ZIndex="101"
+                Background="{DynamicResource NeutralAccentBrush}"
+                IsVisible="False" IsHitTestVisible="False"/>
       </Canvas>
       <!-- Notes backgrounds -->
       <c:TrackBackground Grid.Row="3" Grid.Column="1" IsHitTestVisible="False"

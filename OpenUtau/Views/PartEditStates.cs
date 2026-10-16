@@ -311,4 +311,121 @@ namespace OpenUtau.App.Views {
             tracksVm.TrackOffset = Math.Max(0, tracksVm.TrackOffset - deltaY);
         }
     }
+
+    /// <summary>
+    /// Dragging a tempo marker along a timeline. A press on a timeline seeks, the way it always
+    /// did, so the marker only takes over once the pointer has travelled past
+    /// <see cref="DragThreshold"/> pixels; a click without movement keeps seeking only. The project
+    /// is left alone until the drop, where the marker is moved as one undo group (delete then add),
+    /// so a single undo puts it back.
+    /// </summary>
+    class TempoDragEditState {
+        /// <summary>Pixels the pointer must travel before a press turns into a drag.</summary>
+        public const double DragThreshold = 4;
+        /// <summary>Pixels on either side of a marker's dashed line that count as grabbing it.</summary>
+        public const double HitRadius = 5;
+
+        /// <summary>The marker being dragged.</summary>
+        public readonly UTempo tempo;
+        public readonly Point startPoint;
+
+        /// <summary>Snaps a pointer position and returns the tick the marker would drop on.</summary>
+        private readonly Func<Point, int> snappedTickAt;
+        /// <summary>Draws the preview line at a tick, or hides it when null.</summary>
+        private readonly Action<int?> showPreview;
+
+        public bool IsDragging { get; private set; }
+        /// <summary>Tick the marker would be dropped on; its own tick until a drag starts.</summary>
+        public int PreviewTick { get; private set; }
+
+        public TempoDragEditState(
+            UTempo tempo, Point startPoint,
+            Func<Point, int> snappedTickAt, Action<int?> showPreview) {
+            this.tempo = tempo;
+            this.startPoint = startPoint;
+            this.snappedTickAt = snappedTickAt;
+            this.showPreview = showPreview;
+            PreviewTick = tempo.position;
+        }
+
+        /// <summary>
+        /// The marker a timeline press at <paramref name="x"/> grabs, or null: the closest one
+        /// within <see cref="HitRadius"/> pixels of it. The tempo at tick 0 is never returned: it is
+        /// the project's base tempo, and moving it would leave the project without one at the start.
+        /// </summary>
+        public static UTempo? HitTest(UProject project, double x, Func<int, double> tickToX) {
+            UTempo? hit = null;
+            double closest = HitRadius;
+            foreach (var tempo in project.tempos) {
+                if (tempo.position <= 0) {
+                    continue;
+                }
+                double distance = Math.Abs(tickToX(tempo.position) - x);
+                if (distance <= closest) {
+                    closest = distance;
+                    hit = tempo;
+                }
+            }
+            return hit;
+        }
+
+        /// <summary>
+        /// Follows the pointer. False while the press is still a click (the caller keeps seeking),
+        /// true once it is a drag (the caller must not seek any more).
+        /// </summary>
+        public bool Update(Point point) {
+            if (!IsDragging) {
+                if (Math.Abs(point.X - startPoint.X) < DragThreshold) {
+                    return false;
+                }
+                IsDragging = true;
+            }
+            int tick = snappedTickAt(point);
+            // Dropping a marker onto another one's tick would leave two tempos at one position,
+            // which the time axis cannot represent; the preview then stays where it last was.
+            if (tick != PreviewTick && !IsTaken(tick)) {
+                PreviewTick = tick;
+                showPreview(tick);
+            }
+            return true;
+        }
+
+        /// <summary>
+        /// Ends the drag. A marker that was moved is deleted and added back in one undo group, so a
+        /// single undo restores it; a marker that stayed where it was only loses its preview line.
+        /// </summary>
+        public void End() {
+            int oldTick = tempo.position;
+            int newTick = PreviewTick;
+            double bpm = tempo.bpm;
+            bool moved = IsDragging && newTick != oldTick && !IsTaken(newTick);
+            IsDragging = false;
+            PreviewTick = oldTick;
+            showPreview(null);
+            var project = DocManager.Inst.Project;
+            if (!moved || !project.tempos.Contains(tempo)) {
+                return;
+            }
+            DocManager.Inst.StartUndoGroup("command.project.tempo");
+            DocManager.Inst.ExecuteCmd(new DelTempoChangeCommand(project, oldTick));
+            DocManager.Inst.ExecuteCmd(new AddTempoChangeCommand(project, newTick, bpm));
+            DocManager.Inst.EndUndoGroup();
+        }
+
+        /// <summary>Drops the drag without changing anything: Escape, or the pointer leaving the timeline.</summary>
+        public void Cancel() {
+            IsDragging = false;
+            PreviewTick = tempo.position;
+            showPreview(null);
+        }
+
+        private bool IsTaken(int tick) {
+            foreach (var other in DocManager.Inst.Project.tempos) {
+                if (other != tempo && other.position == tick) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
 }

@@ -37,6 +37,8 @@ namespace OpenUtau.App.Controls {
             OS.IsMacOS() ? KeyModifiers.Meta : KeyModifiers.Control;
         private KeyboardPlayState? keyboardPlayState;
         private NoteEditState? editState;
+        // Set while a tempo marker is dragged on this timeline (see TempoDragEditState).
+        private TempoDragEditState? tempoEditState;
         private Point valueTipPointerPosition;
         private bool shouldOpenNotesContextMenu;
 
@@ -645,9 +647,22 @@ namespace OpenUtau.App.Controls {
             var point = args.GetCurrentPoint(control);
             if (point.Properties.IsLeftButtonPressed) {
                 args.Pointer.Capture(control);
-                ViewModel.NotesViewModel.PointToLineTick(point.Position, out int left, out int right);
+                var notesVm = ViewModel.NotesViewModel;
+                notesVm.PointToLineTick(point.Position, out int left, out int right);
                 int tick = left + ViewModel.NotesViewModel.Part?.position ?? 0;
                 ViewModel.PlaybackViewModel?.MovePlayPos(tick);
+                // A press on a tempo marker seeks too, the way every timeline press always did. The
+                // marker only starts moving once the pointer travels past the drag threshold (see
+                // TimelinePointerMoved); both x and the tick it snaps to are relative to the open
+                // part, the way everything else on this timeline is.
+                tempoEditState = null;
+                if (notesVm.Part != null) {
+                    var tempo = TempoDragEditState.HitTest(DocManager.Inst.Project, point.Position.X, TickToX);
+                    if (tempo != null) {
+                        tempoEditState = new TempoDragEditState(
+                            tempo, point.Position, SnappedTempoTick, ShowTempoDragPreview);
+                    }
+                }
             } else if (point.Properties.IsRightButtonPressed) {
                 args.Pointer.Capture(control);
                 isSelectingRange = true;
@@ -662,6 +677,10 @@ namespace OpenUtau.App.Controls {
             var control = (Control)sender;
             var point = args.GetCurrentPoint(control);
             if (point.Properties.IsLeftButtonPressed) {
+                if (tempoEditState?.Update(point.Position) == true) {
+                    // Dragging a tempo marker: the play position stays where the press left it.
+                    return;
+                }
                 ViewModel.NotesViewModel.PointToLineTick(point.Position, out int left, out int right);
                 int tick = left + ViewModel.NotesViewModel.Part?.position ?? 0;
                 ViewModel.PlaybackViewModel?.MovePlayPos(tick);
@@ -674,6 +693,15 @@ namespace OpenUtau.App.Controls {
         }
 
         public void TimelinePointerReleased(object sender, PointerReleasedEventArgs args) {
+            if (tempoEditState != null) {
+                var state = tempoEditState;
+                tempoEditState = null;
+                if (args.InitialPressMouseButton == MouseButton.Left) {
+                    state.End();
+                } else {
+                    state.Cancel();
+                }
+            }
             if (isSelectingRange && args.InitialPressMouseButton == MouseButton.Right) {
                 isSelectingRange = false;
                 var control = (Control)sender;
@@ -686,6 +714,44 @@ namespace OpenUtau.App.Controls {
                 return;
             }
             args.Pointer.Capture(null);
+        }
+
+        public void TimelinePointerExited(object sender, PointerEventArgs args) {
+            // A dragged marker follows the pointer out of the timeline only as far as the edge of
+            // the canvas: leaving it drops the drag, the way Escape does.
+            CancelTempoDrag();
+        }
+
+        void CancelTempoDrag() {
+            var state = tempoEditState;
+            tempoEditState = null;
+            state?.Cancel();
+        }
+
+        // Timeline x of a project tick, the mapping the notes view model draws everything with.
+        double TickToX(int tick) {
+            var notesVm = ViewModel.NotesViewModel;
+            return (tick - notesVm.TickOrigin - notesVm.TickOffset) * notesVm.TickWidth;
+        }
+
+        // The project tick a dragged tempo marker snaps to, through the same snap the timeline seek
+        // uses. Tick 0 is the base tempo's position and stays out of reach.
+        int SnappedTempoTick(Point point) {
+            var notesVm = ViewModel.NotesViewModel;
+            notesVm.PointToLineTick(point, out int left, out int right);
+            int partPos = notesVm.Part?.position ?? 0;
+            int tick = partPos + left;
+            return tick > 0 ? tick : partPos + right;
+        }
+
+        // The drag preview: a line on the timeline canvas at the tick the marker would drop on.
+        void ShowTempoDragPreview(int? tick) {
+            if (tick == null) {
+                TempoDragPreview.IsVisible = false;
+                return;
+            }
+            Canvas.SetLeft(TempoDragPreview, Math.Round(TickToX(tick.Value)) + 0.5);
+            TempoDragPreview.IsVisible = true;
         }
 
         public void TimelineDoubleTapped(object sender, TappedEventArgs args) {
@@ -1542,6 +1608,12 @@ namespace OpenUtau.App.Controls {
                     args.Handled = false;
                     return;
                 }
+            }
+            if (args.Key == Key.Escape && tempoEditState != null) {
+                // Escape drops a tempo marker drag in progress, like leaving the timeline.
+                CancelTempoDrag();
+                args.Handled = true;
+                return;
             }
             if (LyricBox.IsVisible) {
                 args.Handled = false;

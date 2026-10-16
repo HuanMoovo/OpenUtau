@@ -47,6 +47,8 @@ namespace OpenUtau.App.Views {
         private WindowNotificationManager notificationManager;
 
         private PartEditState? partEditState;
+        // Set while a tempo marker is dragged on a timeline (see TempoDragEditState).
+        private TempoDragEditState? tempoEditState;
 
         // Time range selection state
         private bool isSelectingRange;
@@ -974,6 +976,15 @@ namespace OpenUtau.App.Views {
                             viewModel.PlaybackViewModel.MovePlayPos(endTick);
                         }
                         break;
+                    // Escape drops a tempo marker drag in progress, like leaving the timeline. With
+                    // no drag it stays unhandled, the way every other unbound key does.
+                    case Key.Escape:
+                        if (tempoEditState == null) {
+                            args.Handled = false;
+                        } else {
+                            CancelTempoDrag();
+                        }
+                        break;
                     default:
                         args.Handled = false;
                         break;
@@ -1212,6 +1223,15 @@ namespace OpenUtau.App.Views {
                 args.Pointer.Capture(control);
                 viewModel.TracksViewModel.PointToLineTick(point.Position, out int left, out int right);
                 viewModel.PlaybackViewModel.MovePlayPos(left);
+                // A press on a tempo marker seeks too, the way every timeline press always did. The
+                // marker only starts moving once the pointer travels past the drag threshold (see
+                // TimelinePointerMoved), so a click without movement keeps its old behaviour.
+                tempoEditState = null;
+                var tempo = TempoDragEditState.HitTest(DocManager.Inst.Project, point.Position.X, TickToX);
+                if (tempo != null) {
+                    tempoEditState = new TempoDragEditState(
+                        tempo, point.Position, SnappedTempoTick, ShowTempoDragPreview);
+                }
             } else if (point.Properties.IsRightButtonPressed) {
                 isSelectingRange = true;
                 rangeSelectStartPoint = point.Position;
@@ -1223,6 +1243,11 @@ namespace OpenUtau.App.Views {
             var control = (Control)sender;
             var point = args.GetCurrentPoint(control);
             if (point.Properties.IsLeftButtonPressed) {
+                if (tempoEditState?.Update(point.Position) == true) {
+                    // Dragging a tempo marker: the play position stays where the press left it.
+                    Cursor = null;
+                    return;
+                }
                 viewModel.TracksViewModel.PointToLineTick(point.Position, out int left, out int right);
                 viewModel.PlaybackViewModel.MovePlayPos(left);
             } else if (point.Properties.IsRightButtonPressed && isSelectingRange) {
@@ -1235,6 +1260,15 @@ namespace OpenUtau.App.Views {
         }
 
         public void TimelinePointerReleased(object sender, PointerReleasedEventArgs args) {
+            if (tempoEditState != null) {
+                var state = tempoEditState;
+                tempoEditState = null;
+                if (args.InitialPressMouseButton == MouseButton.Left) {
+                    state.End();
+                } else {
+                    state.Cancel();
+                }
+            }
             if (isSelectingRange && args.InitialPressMouseButton == MouseButton.Right) {
                 isSelectingRange = false;
                 var control = (Control)sender;
@@ -1245,6 +1279,40 @@ namespace OpenUtau.App.Views {
                 }
             }
             args.Pointer.Capture(null);
+        }
+
+        public void TimelinePointerExited(object sender, PointerEventArgs args) {
+            // A dragged marker follows the pointer out of the timeline only as far as the edge of
+            // the canvas: leaving it drops the drag, the way Escape does.
+            CancelTempoDrag();
+        }
+
+        void CancelTempoDrag() {
+            var state = tempoEditState;
+            tempoEditState = null;
+            state?.Cancel();
+        }
+
+        // Timeline x of a tick, the mapping the tracks view model draws everything with.
+        double TickToX(int tick) => viewModel.TracksViewModel.TickTrackToPoint(tick, 0).X;
+
+        // The line tick a dragged tempo marker snaps to, the snap the timeline seek uses. Tick 0 is
+        // the base tempo's position and stays out of reach, so a drop snapped onto it takes the next
+        // line instead.
+        int SnappedTempoTick(Point point) {
+            viewModel.TracksViewModel.PointToLineTick(point, out int left, out int right);
+            return left > 0 ? left : right;
+        }
+
+        // The drag preview: a line on the timeline canvas at the tick the marker would drop on.
+        void ShowTempoDragPreview(int? tick) {
+            if (tick == null) {
+                TempoDragPreview.IsVisible = false;
+                return;
+            }
+            var tracksVm = viewModel.TracksViewModel;
+            Canvas.SetLeft(TempoDragPreview, Math.Round((tick.Value - tracksVm.TickOffset) * tracksVm.TickWidth) + 0.5);
+            TempoDragPreview.IsVisible = true;
         }
 
         public void TimelineDoubleTapped(object sender, TappedEventArgs args) {
