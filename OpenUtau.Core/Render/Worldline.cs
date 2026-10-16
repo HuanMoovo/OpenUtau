@@ -306,6 +306,71 @@ namespace OpenUtau.Core.Render {
         }
 
         /// <summary>
+        /// The frames of an NDArray as a flat span over its backing storage. The analysis and
+        /// resampling matrices are allocated with np.ndarray and only ever written row-wise, so
+        /// their storage is the row-major buffer ToArray would copy out; reading it directly skips
+        /// that copy. <paramref name="count"/> comes from the shape, since ArraySlice.ItemLength is
+        /// not the element count.
+        /// </summary>
+        internal static ReadOnlySpan<double> Frames(NDArray array, int count) {
+            return MemoryMarshal.CreateReadOnlySpan(ref array.Data<double>().GetPinnableReference(), count);
+        }
+
+        /// <summary>
+        /// The segment's frames padded at both edges, into flat row-major sp/ap: output frame i is
+        /// the nearest segment frame, repeated over the padding at either end. f0 is the scalar
+        /// column, sp/ap carry spSize bins per frame.
+        /// </summary>
+        internal static void PadResamplerFrames(NDArray segF0, NDArray segSp, NDArray segAp,
+            int spSize, int padding, double[] f0, double[] sp, double[] ap) {
+            int length = segF0.size;
+            int total = f0.Length;
+            var framesF0 = Frames(segF0, length);
+            var framesSp = Frames(segSp, length * spSize);
+            var framesAp = Frames(segAp, length * spSize);
+            for (int i = 0; i < total; ++i) {
+                int src = Math.Clamp(i - padding, 0, length - 1);
+                f0[i] = framesF0[src];
+                framesSp.Slice(src * spSize, spSize).CopyTo(sp.AsSpan(i * spSize, spSize));
+                framesAp.Slice(src * spSize, spSize).CopyTo(ap.AsSpan(i * spSize, spSize));
+            }
+        }
+
+        /// <summary>
+        /// The note's output: samples[startSample .. startSample + lengthSamples) cast to float,
+        /// and - in the same pass, over the same float values Resample used to measure separately -
+        /// the peak of their magnitudes that the auto gain divides by. It is Enumerable.Max over
+        /// those floats: leading NaNs are skipped, a NaN after a number is skipped too, and only an
+        /// all-NaN output keeps one, so the same comparisons run in the same order.
+        /// </summary>
+        internal static float[] ConvertOutput(double[] samples, int startSample, int lengthSamples, out double peak) {
+            var output = new float[lengthSamples];
+            float max = 0;
+            float firstNan = 0;
+            bool anyNumber = false;
+            bool anyNan = false;
+            for (int i = 0; i < lengthSamples; ++i) {
+                float v = (float)samples[startSample + i];
+                output[i] = v;
+                float a = Math.Abs(v);
+                if (float.IsNaN(a)) {
+                    if (!anyNan) {
+                        firstNan = a;
+                        anyNan = true;
+                    }
+                } else if (!anyNumber) {
+                    max = a;
+                    anyNumber = true;
+                } else if (a > max) {
+                    max = a;
+                }
+            }
+            // An empty output has no max at all, and an all-NaN one keeps the first NaN, as Max does.
+            peak = anyNumber ? max : (anyNan ? firstNan : 0);
+            return output;
+        }
+
+        /// <summary>
         /// Worldline resampler: renders one note to exactly item.durRequired ms,
         /// leaving envelopes and overlaps to the wavtool.
         /// </summary>
@@ -319,18 +384,10 @@ namespace OpenUtau.Core.Render {
             // Pad edge frames so synthesis settles before the audio that is kept.
             int length = segment.f0.size;
             int total = length + 2 * ResamplerPadding;
-            double[] segF0 = segment.f0.ToArray<double>();
-            double[] segSp = segment.spEnv.ToArray<double>();
-            double[] segAp = segment.ap.ToArray<double>();
             var f0 = new double[total];
             var sp = new double[total * spSize];
             var ap = new double[total * spSize];
-            for (int i = 0; i < total; ++i) {
-                int src = Math.Clamp(i - ResamplerPadding, 0, length - 1);
-                f0[i] = segF0[src];
-                Array.Copy(segSp, src * spSize, sp, i * spSize, spSize);
-                Array.Copy(segAp, src * spSize, ap, i * spSize, spSize);
-            }
+            PadResamplerFrames(segment.f0, segment.spEnv, segment.ap, spSize, ResamplerPadding, f0, sp, ap);
 
             // Output starts after the padding plus the sub-frame part of the offset,
             // as in the native resampler.
@@ -384,13 +441,11 @@ namespace OpenUtau.Core.Render {
 
             int startSample = Math.Min(samples.Length, (int)(startMs * fs / 1000));
             int lengthSamples = Math.Min(samples.Length - startSample, (int)(item.durRequired * fs / 1000));
-            var output = new float[lengthSamples];
-            for (int i = 0; i < lengthSamples; ++i) {
-                output[i] = (float)samples[startSample + i];
-            }
+            // The note's output and its peak in one pass, since the loop writes every sample it
+            // measures.
+            var output = ConvertOutput(samples, startSample, lengthSamples, out double outMax);
 
             double voicedRatio = f0.Count(f => f > ResamplerVoicedF0) / (double)f0.Length;
-            double outMax = output.Length > 0 ? output.Max(s => Math.Abs(s)) : 0;
             double gain = (item.phone.direct ? 0 : item.volume) * 0.01;
             double autoGain = ResamplerAutoGain(outMax, segment.wavMax, voicedRatio, GetFlag(item, "P", 86));
             if (autoGain * gain != 1) {

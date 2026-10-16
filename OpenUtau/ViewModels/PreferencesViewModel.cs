@@ -111,6 +111,9 @@ namespace OpenUtau.App.ViewModels {
         [Reactive] public partial int DegreeStyle { get; set; }
         [Reactive] public partial bool UseTrackColor { get; set; }
         [Reactive] public partial bool ShowPortrait { get; set; }
+        // Portrait overrides for every voicebank; 0 keeps the voicebank's own value.
+        [Reactive] public partial int PortraitHeight { get; set; }
+        [Reactive] public partial float PortraitOpacity { get; set; }
         [Reactive] public partial bool ShowIcon { get; set; }
         [Reactive] public partial bool ShowGhostNotes { get; set; }
         [Reactive] public partial bool NoteHoverGlow { get; set; }
@@ -232,6 +235,8 @@ namespace OpenUtau.App.ViewModels {
             DegreeStyle = Preferences.Default.DegreeStyle;
             UseTrackColor = Preferences.Default.UseTrackColor;
             ShowPortrait = Preferences.Default.ShowPortrait;
+            PortraitHeight = Preferences.Default.PortraitHeight;
+            PortraitOpacity = Preferences.Default.PortraitOpacity;
             ShowIcon = Preferences.Default.ShowIcon;
             ShowGhostNotes = Preferences.Default.ShowGhostNotes;
             NoteHoverGlow = Preferences.Default.NoteHoverGlow;
@@ -356,6 +361,20 @@ namespace OpenUtau.App.ViewModels {
                 .Skip(1)
                 .Subscribe(showPortrait => {
                     Preferences.Default.ShowPortrait = showPortrait;
+                    Preferences.Save();
+                    MessageBus.Current.SendMessage(new PianorollRefreshEvent("Portrait"));
+                });
+            this.WhenAnyValue(vm => vm.PortraitHeight)
+                .Skip(1)
+                .Subscribe(portraitHeight => {
+                    Preferences.Default.PortraitHeight = portraitHeight;
+                    Preferences.Save();
+                    MessageBus.Current.SendMessage(new PianorollRefreshEvent("Portrait"));
+                });
+            this.WhenAnyValue(vm => vm.PortraitOpacity)
+                .Skip(1)
+                .Subscribe(portraitOpacity => {
+                    Preferences.Default.PortraitOpacity = portraitOpacity;
                     Preferences.Save();
                     MessageBus.Current.SendMessage(new PianorollRefreshEvent("Portrait"));
                 });

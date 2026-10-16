@@ -320,6 +320,32 @@
             <TextBlock Text="{DynamicResource prefs.appearance.showportrait}" HorizontalAlignment="Left"/>
             <ToggleSwitch IsChecked="{Binding ShowPortrait}"/>
           </Grid>
+          <Grid ColumnDefinitions="Auto,8,30,8,*" Margin="0,5,0,0">
+            <TextBlock Grid.Column="0" Text="{DynamicResource prefs.appearance.portraitheight}"
+                       ToolTip.Tip="{DynamicResource prefs.appearance.portraitheight.tip}"/>
+            <TextBlock Grid.Column="2">
+              <TextBlock.Text>
+                <MultiBinding StringFormat="{}{0:#0}">
+                  <Binding Path="PortraitHeight"/>
+                </MultiBinding>
+              </TextBlock.Text>
+            </TextBlock>
+            <Slider Grid.Column="4" Classes="fader" Value="{Binding PortraitHeight}" Minimum="0" Maximum="2000"
+                    TickPlacement="BottomRight" TickFrequency="10" IsSnapToTickEnabled="true"/>
+          </Grid>
+          <Grid ColumnDefinitions="Auto,8,30,8,*" Margin="0,5,0,0">
+            <TextBlock Grid.Column="0" Text="{DynamicResource prefs.appearance.portraitopacity}"
+                       ToolTip.Tip="{DynamicResource prefs.appearance.portraitopacity.tip}"/>
+            <TextBlock Grid.Column="2">
+              <TextBlock.Text>
+                <MultiBinding StringFormat="{}{0:0.00}">
+                  <Binding Path="PortraitOpacity"/>
+                </MultiBinding>
+              </TextBlock.Text>
+            </TextBlock>
+            <Slider Grid.Column="4" Classes="fader" Value="{Binding PortraitOpacity}" Minimum="0" Maximum="1"
+                    TickPlacement="BottomRight" TickFrequency="0.05" IsSnapToTickEnabled="true"/>
+          </Grid>
           <Grid Margin="0,5,0,0">
             <TextBlock Text="{DynamicResource prefs.appearance.showicon}" HorizontalAlignment="Left"/>
             <ToggleSwitch IsChecked="{Binding ShowIcon}"/>
