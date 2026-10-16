@@ -15,7 +15,7 @@ using ReactiveUI;
 using ReactiveUI.Primitives;
 
 namespace OpenUtau.App.Controls {
-    class NotesCanvas : Control {
+    class NotesCanvas : Control, ICmdSubscriber {
         public static readonly DirectProperty<NotesCanvas, double> TickWidthProperty =
             AvaloniaProperty.RegisterDirect<NotesCanvas, double>(
                 nameof(TickWidth),
@@ -166,7 +166,24 @@ namespace OpenUtau.App.Controls {
         private readonly Dictionary<(Color color, byte alpha, int thickness), Pen> glowPens = new();
 
         private PolylineGeometry polylineGeometry = new PolylineGeometry();
+        // Scratch point buffer for the pitch / vibrato / final pitch polylines: refilled per
+        // polyline instead of allocating a Points per note per frame. Safe because
+        // PolylineGeometry's constructor copies the points it is given (checked against the
+        // Avalonia 12.1.3 assembly in use: mutating the source list after construction leaves
+        // geometry.Points unchanged), so no geometry depends on this buffer's later content.
         private Points points = new Points();
+
+        // Per-note phoneme error lookup, keyed by note reference. Presence means the note
+        // has at least one attached phoneme; the value means one of them is in error.
+        // RenderNoteBody reads this instead of scanning Part.phonemes for every visible
+        // note on every repaint (that scan was O(visible notes x phonemes) per frame at
+        // 30-60 Hz). Rebuild rules are stated in PhonemeErrorCacheIsValid.
+        private readonly Dictionary<UNote, bool> phonemeErrorCache =
+            new Dictionary<UNote, bool>(ReferenceEqualityComparer.Instance);
+        private UVoicePart? phonemeErrorCachePart;
+        private List<UPhoneme>? phonemeErrorCachePhonemes;
+        private long phonemeErrorCacheRevision = long.MinValue;
+        private bool phonemeErrorCacheDirty = true;
 
         private HashSet<UNote> selectedNotes = new HashSet<UNote>();
         private Geometry pointGeometry;
@@ -184,7 +201,10 @@ namespace OpenUtau.App.Controls {
             hoverTimer.Tick += (_, _) => UpdateHoverGlow();
 
             MessageBus.Current.Listen<NotesRefreshEvent>()
-                .Subscribe(_ => InvalidateVisual());
+                .Subscribe(_ => {
+                    phonemeErrorCacheDirty = true;
+                    InvalidateVisual();
+                });
             // Phrase rebuilds land after the refresh events, so also repaint when
             // fresh render projections are delivered (the final pitch polyline
             // follows phrase grouping).
@@ -197,10 +217,14 @@ namespace OpenUtau.App.Controls {
                     InvalidateVisual();
                 });
             MessageBus.Current.Listen<PartRefreshEvent>()
-                .Subscribe(_ => RefreshGhostNotes());
+                .Subscribe(_ => {
+                    phonemeErrorCacheDirty = true;
+                    RefreshGhostNotes();
+                });
             this.WhenAnyValue(x => x.Part)
                 .OfType<UVoicePart>()
                 .Subscribe(_ => {
+                    phonemeErrorCacheDirty = true;
                     RefreshGhostNotes();
                     hoverNote = null;
                     fadingHoverNote = null;
@@ -208,6 +232,85 @@ namespace OpenUtau.App.Controls {
                     hoverFadeGlow = 0;
                     hoverTimer.Stop();
                 });
+        }
+
+        protected override void OnAttachedToVisualTree(VisualTreeAttachmentEventArgs e) {
+            base.OnAttachedToVisualTree(e);
+            DocManager.Inst.AddSubscriber(this);
+        }
+
+        protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e) {
+            base.OnDetachedFromVisualTree(e);
+            DocManager.Inst.RemoveSubscriber(this);
+        }
+
+        /// <summary>
+        /// Invalidates the phoneme error cache on every command and notification DocManager
+        /// publishes, which is what makes it impossible for the cache to go stale:
+        /// UPhoneme.Error is only ever written from UPart.Validate (it copies note.Error and
+        /// re-checks singer/oto/duration), and every UPart.Validate call is reached either
+        /// from a command (queued validation, deferred until the frame it is flushed) or
+        /// from a notification (PhonemizedNotification, which DocManager publishes right
+        /// after the phonemizer response is consumed, ValidateProjectNotification,
+        /// SingersRefreshedNotification, OtoChangedNotification, plus note/track/expression/
+        /// part commands and their undo replays). All of those go through ExecuteCmd ->
+        /// Publish, so the flag is set at the latest one validate-before-repaint, and the
+        /// rebuild happens at the next repaint, i.e. after the mutation.
+        /// </summary>
+        public void OnNext(UCommand cmd, bool isUndo) {
+            // The only two kinds published at frame rate (playback position, progress
+            // bars) and the only ones that cannot touch part data.
+            if (cmd is SetPlayPosTickNotification || cmd is ProgressBarNotification) {
+                return;
+            }
+            phonemeErrorCacheDirty = true;
+        }
+
+        /// <summary>True while the cached per-note phoneme errors still match the part.</summary>
+        bool PhonemeErrorCacheIsValid(UVoicePart part) {
+            if (phonemeErrorCacheDirty ||
+                !ReferenceEquals(phonemeErrorCachePart, part) ||
+                !ReferenceEquals(phonemeErrorCachePhonemes, part.phonemes)) {
+                return false;
+            }
+            // A command's validation may be deferred to the start of the next frame
+            // (DocManager.QueueValidate), so a validate can land between two repaints with
+            // no publish in between. Pending validates are only ever queued and flushed
+            // while an undo group is open (EndUndoGroup flushes it before closing the group
+            // and bumping the revision), so during one the cache is rebuilt for every
+            // repaint rather than trusted.
+            if (DocManager.Inst.HasOpenUndoGroup) {
+                return false;
+            }
+            // Backstop for a phoneme change that reached the part without a published
+            // command or notification: every committed document write bumps this
+            // monotonic revision, so the cache is rebuilt whenever it moved.
+            return phonemeErrorCacheRevision == DocManager.Inst.Revision.Value;
+        }
+
+        /// <summary>One pass over the part's phonemes, filling the cache.</summary>
+        void RebuildPhonemeErrorCache(UVoicePart part) {
+            var phonemes = part.phonemes;
+            // Cleared before the pass: a change announced while the pass runs (a validate
+            // on another thread) leaves the flag dirty and is picked up on the next
+            // repaint, instead of being swallowed by a flag cleared afterwards.
+            phonemeErrorCacheDirty = false;
+            long revision = DocManager.Inst.Revision.Value;
+            phonemeErrorCache.Clear();
+            foreach (var phoneme in phonemes) {
+                var note = phoneme.Parent;
+                if (note == null) {
+                    continue;
+                }
+                phonemeErrorCache[note] = phonemeErrorCache.TryGetValue(note, out bool hasError)
+                    ? hasError || phoneme.Error
+                    : phoneme.Error;
+            }
+            phonemeErrorCachePart = part;
+            phonemeErrorCachePhonemes = phonemes;
+            // The revision read before the pass: if it moved while the pass ran, the next
+            // repaint rebuilds again rather than trusting a mix of old and new phonemes.
+            phonemeErrorCacheRevision = revision;
         }
 
         void RefreshGhostNotes() {
@@ -543,21 +646,19 @@ namespace OpenUtau.App.Controls {
             bool hasError = note.Error;
 
             // Check for Phoneme Errors (mimicking PhonemeCanvas behavior)
-            if (!hasError && Part != null && Part.phonemes != null) {
-                int phonemeCount = 0;
-                foreach (var p in Part.phonemes) {
-                    if (p.Parent == note) {
-                        phonemeCount++;
-                        // If any attached phoneme has an error, the whole note is flagged
-                        if (p.Error) {
-                            hasError = true;
-                            break;
-                        }
-                    }
+            if (!hasError && Part is UVoicePart part && part.phonemes != null) {
+                if (!PhonemeErrorCacheIsValid(part)) {
+                    RebuildPhonemeErrorCache(part);
                 }
-                // Edge Case: If the note is not a continuation/rest but generated 0 phonemes, 
-                // it means the phonemizer completely failed to process the lyric.
-                if (!hasError && phonemeCount == 0 && !note.lyric.StartsWith("+") && !note.lyric.StartsWith("-")) {
+                // Cache lookup instead of a scan of part.phonemes: the entry holds
+                // "any attached phoneme has an error", and a note that is missing from
+                // the cache generated no phoneme at all.
+                if (phonemeErrorCache.TryGetValue(note, out bool notePhonemeError)) {
+                    // If any attached phoneme has an error, the whole note is flagged
+                    hasError = notePhonemeError;
+                } else if (!note.lyric.StartsWith("+") && !note.lyric.StartsWith("-")) {
+                    // Edge Case: If the note is not a continuation/rest but generated 0 phonemes, 
+                    // it means the phonemizer completely failed to process the lyric.
                     hasError = true;
                 }
             }
@@ -699,7 +800,7 @@ namespace OpenUtau.App.Controls {
             double p0Tone = note.AdjustedTone + pts[0].Y / 10.0;
             Point p0 = viewModel.TickToneToPoint(p0Tick, p0Tone - 0.5);
             Point p_1 = p0;
-            var points = new Points();          
+            points.Clear();
             points.Add(p0);
 
             var brush = note.pitch.snapFirst ? ThemeManager.AccentBrush3 : null;
@@ -771,7 +872,7 @@ namespace OpenUtau.App.Controls {
             float nPeriod = (float)viewModel.Project.timeAxis.TicksBetweenMsPos(note.PositionMs, note.PositionMs + vibrato.period) / note.duration;
             float nPos = vibrato.NormalizedStart;
             var point = vibrato.Evaluate(nPos, nPeriod, note);
-            var points = new Points();
+            points.Clear();
             points.Add(viewModel.TickToneToPoint(point.X, point.Y - 0.5));
             while (nPos < 1) {
                 nPos = Math.Min(1, nPos + nPeriod / 16);
@@ -836,7 +937,7 @@ namespace OpenUtau.App.Controls {
                     int pitchStart = phrase.position - phrase.leading - Part.position;
                     int startIdx = (int)Math.Max(0, (leftTick - pitchStart) / 5);
                     int endIdx = (int)Math.Min(phrase.pitches.Length, (rightTick - pitchStart) / 5 + 1);
-                    var points = new Points();
+                    points.Clear();
                     for (int i = startIdx; i < endIdx; ++i) {
                         int t = pitchStart + i * 5;
                         float p = phrase.pitches[i];
