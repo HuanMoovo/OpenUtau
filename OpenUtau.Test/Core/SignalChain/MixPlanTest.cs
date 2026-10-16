@@ -282,5 +282,92 @@ namespace OpenUtau.Core.SignalChain {
             Assert.Equal(800, list[0].durMs);
             Assert.Equal(2, list[0].channels);
         }
+
+        static float[] Flat(int samples, float value) {
+            var buffer = new float[samples];
+            for (int i = 0; i < samples; ++i) {
+                buffer[i] = value;
+            }
+            return buffer;
+        }
+
+        /// <summary>
+        /// A render pass re-keys a part that was re-rendered under new hashes (a singer
+        /// change, an edit) to the phrase set it is about to publish. Without the re-key
+        /// the session keeps the slots of the set it began with, so the old voice keeps
+        /// playing even though the new one is rendered.
+        /// </summary>
+        [Fact]
+        public void SyncSessionPartReKeysAPartForARerenderedPhraseSet() {
+            var planner = new MixPlanner();
+            var part = new UVoicePart { trackNo = 0 };
+            planner.BeginSession(new[] { new MixPlanner.SlotSpec(part, 0, 1, 0, 100, 1) });
+            planner.RegisterPcm(part, 1, 0, 100, 1, Flat(4410, 0.25f));
+            var src = planner.GetTrackSource(0);
+            Assert.True(src.IsReady(0, 4410));
+
+            // The pre-render pass re-keys the part to the set it is about to render.
+            // The new phrase is not rendered yet, so its slot is pending: the old
+            // singer's pcm must not be served any more.
+            Assert.True(planner.SyncSessionPart(part, new (ulong, double, double, int)[] {
+                (2, 0, 100, 1),
+            }));
+            Assert.False(src.IsReady(0, 4410));
+            var buffer = new float[4410];
+            Assert.Equal(4410, src.Mix(0, buffer, 0, 4410)); // silence through the estimated end
+            Assert.True(buffer.All(x => x == 0f));
+
+            // The phrase the pass renders flips the re-keyed slot ready.
+            planner.RegisterPcm(part, 2, 0, 100, 1, Flat(4410, 0.5f));
+            Assert.True(src.IsReady(0, 4410));
+            buffer = new float[4410];
+            src.Mix(0, buffer, 0, buffer.Length);
+            Assert.True(buffer.All(x => x == 0.5f));
+        }
+
+        /// <summary>
+        /// The re-key runs on every full-project pass, so an unchanged phrase set must
+        /// not disturb a running session: ready slots stay ready.
+        /// </summary>
+        [Fact]
+        public void SyncSessionPartLeavesAnUnchangedPhraseSetAlone() {
+            var planner = new MixPlanner();
+            var part = new UVoicePart { trackNo = 0 };
+            planner.BeginSession(new[] {
+                new MixPlanner.SlotSpec(part, 0, 1, 0, 100, 1),
+                new MixPlanner.SlotSpec(part, 0, 2, 200, 100, 1),
+            });
+            planner.RegisterPcm(part, 1, 0, 100, 1, Flat(4410, 0.25f));
+            planner.RegisterPcm(part, 2, 200, 100, 1, Flat(4410, 0.75f));
+            var src = planner.GetTrackSource(0);
+            Assert.True(src.IsReady(0, 4410));
+
+            Assert.False(planner.SyncSessionPart(part, new (ulong, double, double, int)[] {
+                (1, 0, 100, 1),
+                (2, 200, 100, 1),
+            }));
+            Assert.True(src.IsReady(0, 4410));
+            var buffer = new float[4410];
+            src.Mix(0, buffer, 0, buffer.Length);
+            Assert.True(buffer.All(x => x == 0.25f));
+        }
+
+        /// <summary>A part the session does not play (a solo preview of another track)
+        /// has no slots to re-key, and s no point in the pass publishing it.</summary>
+        [Fact]
+        public void SyncSessionPartIgnoresPartsOutsideTheSession() {
+            var planner = new MixPlanner();
+            var played = new UVoicePart { trackNo = 0 };
+            var other = new UVoicePart { trackNo = 1 };
+            planner.BeginSession(new[] { new MixPlanner.SlotSpec(played, 0, 1, 0, 100, 1) });
+
+            Assert.False(planner.SyncSessionPart(other, new (ulong, double, double, int)[] { (2, 0, 100, 1) }));
+            planner.RegisterPcm(other, 2, 0, 100, 1, Flat(4410, 0.5f));
+            var src = planner.GetTrackSource(1);
+            Assert.True(src.IsReady(0, 4410));
+            var buffer = new float[4410];
+            src.Mix(0, buffer, 0, buffer.Length);
+            Assert.True(buffer.All(x => x == 0f)); // not in the session: silence
+        }
     }
 }

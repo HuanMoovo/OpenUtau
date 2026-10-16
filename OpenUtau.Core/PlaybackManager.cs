@@ -443,8 +443,27 @@ namespace OpenUtau.Core {
             loopProjectOnPlaybackEnd = false;
         }
 
+        /// <summary>The largest ms value a <see cref="TimeSpan"/> can hold.</summary>
+        internal static readonly double MaxTimeSpanMs = TimeSpan.MaxValue.TotalMilliseconds;
+
+        /// <summary>
+        /// The ms position playback can be started at. A degenerate project (a tempo whose
+        /// tick&lt;-&gt;ms conversion overflowed, an absurd note position) can leave the time
+        /// axis with a non-finite or unrepresentable ms value, and
+        /// <see cref="TimeSpan.FromMilliseconds(double)"/> throws ArgumentException on it,
+        /// turning Play into "Failed to render" with nothing the user can act on. Starting
+        /// at the project start is the least surprising recovery.
+        /// </summary>
+        internal static double SanitizeStartMs(double startMs) {
+            if (!double.IsFinite(startMs)) {
+                return 0;
+            }
+            return Math.Clamp(startMs, 0, MaxTimeSpanMs);
+        }
+
         private void StartPlayback(double startMs, MasterAdapter masterAdapter) {
             toneGenerator.EndAllTones();
+            startMs = SanitizeStartMs(startMs);
             this.startMs = startMs;
             metronomeEngine.StartPlayback(DocManager.Inst.Project.timeAxis, StartTick);
             var start = TimeSpan.FromMilliseconds(startMs);

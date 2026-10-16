@@ -176,6 +176,64 @@ namespace OpenUtau.Core {
             RegisterPcm(part, 0, posMs, durMs, channels, pcm);
         }
 
+        /// <summary>
+        /// Re-keys the session's slots of one part to the part's current phrase set,
+        /// when that set has changed. The render pass calls this before it renders a
+        /// part: an edit or a singer change gives every phrase a new content hash, and
+        /// the slots published by the last <see cref="BeginSession"/> still describe
+        /// the old set, so without this the playing session would keep serving the old
+        /// pcm and never pick the new render up (a singer change would keep the old
+        /// voice until playback restarts).
+        /// Slots come back Ready from the cache or Pending, so phrases that are already
+        /// rendered play immediately. A part with no session slots, and a part whose
+        /// hashes are unchanged, are left alone.
+        /// </summary>
+        /// <returns>Whether the part's session slots were replaced.</returns>
+        public bool SyncSessionPart(UPart part,
+                IReadOnlyList<(ulong hash, double offsetMs, double estimatedLengthMs, int channels)> specs) {
+            lock (lockObj) {
+                if (sessionParts == null) {
+                    return false;
+                }
+                PartSession partSession = null;
+                for (int p = 0; p < sessionParts.Count; ++p) {
+                    if (ReferenceEquals(sessionParts[p].part, part)) {
+                        partSession = sessionParts[p];
+                        break;
+                    }
+                }
+                if (partSession == null) {
+                    return false;
+                }
+                if (specs.Count == partSession.specs.Count) {
+                    bool same = true;
+                    for (int i = 0; i < specs.Count && same; ++i) {
+                        same = specs[i].hash == partSession.specs[i].hash;
+                    }
+                    if (same) {
+                        return false;
+                    }
+                }
+                partSession.specs.Clear();
+                partSession.samples.Clear();
+                foreach (var spec in specs) {
+                    partSession.specs.Add(spec);
+                    if (TryGetCache(part, spec.hash, out var cached)) {
+                        partSession.samples.Add(new SampleSlot(spec.offsetMs, spec.estimatedLengthMs, spec.channels,
+                            cached.pcm, SlotState.Ready));
+                    } else {
+                        partSession.samples.Add(new SampleSlot(spec.offsetMs, spec.estimatedLengthMs, spec.channels));
+                    }
+                }
+                foreach (var track in trackOrder) {
+                    if (track.TrackNo == partSession.trackNo) {
+                        RebuildTrack(track);
+                    }
+                }
+                return true;
+            }
+        }
+
         // ==================== invalidation ====================
 
         /// <summary>

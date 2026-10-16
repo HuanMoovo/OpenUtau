@@ -187,6 +187,14 @@ namespace OpenUtau.App.Controls {
                     MoreButton.Flyout?.Hide();
                     anchor = MoreButton;
                 }
+                if (SingerSelectorSetting.UseCompactMenu) {
+                    // The classic selector (issue #2467): grouped by singer type, nothing to load.
+                    ViewModel.RefreshSingerMenu();
+                    if (this.FindResource("SingersMenuRes") is ContextMenu menu) {
+                        menu.Open(anchor);
+                    }
+                    return;
+                }
                 var viewModel = new SingerFlyoutViewModel(() => ViewModel.Singer, ViewModel.SelectSingerCommand);
                 var content = new SingerFlyout() { DataContext = viewModel };
                 var flyout = new Flyout() {

@@ -261,6 +261,84 @@ namespace OpenUtau.App.ViewModels {
             }
         }
 
+        /// <summary>
+        /// The compact singer menu (issue #2467): the recent singers, then a favourites submenu and
+        /// one submenu per singer type, whose header names the type, then the maintenance items.
+        /// Rebuilt on every open and without images, so it appears immediately.
+        /// </summary>
+        public IReadOnlyList<MenuItemViewModel>? SingerMenuItems { get; private set; }
+
+        public void RefreshSingerMenu() {
+            var items = new List<MenuItemViewModel>();
+            var singers = SingerManager.Inst.Singers;
+            SingerMenuItemViewModel Item(USinger singer) => new SingerMenuItemViewModel() {
+                Header = singer.LocalizedName,
+                Command = SelectSingerCommand,
+                CommandParameter = singer,
+            };
+            // The recent ones flatten to the top, the way the singer list had it before the flyout.
+            foreach (var id in Preferences.Default.RecentSingers) {
+                if (!string.IsNullOrWhiteSpace(id) && singers.TryGetValue(id, out var singer) && singer != null) {
+                    items.Add(Item(singer));
+                }
+            }
+            var favourites = Preferences.Default.FavoriteSingers
+                .Where(id => !string.IsNullOrWhiteSpace(id) && singers.ContainsKey(id))
+                .Select(id => singers[id])
+                .LocalizedOrderBy(singer => singer.LocalizedName)
+                .ToList();
+            items.Add(new SingerMenuItemViewModel() {
+                Header = ThemeManager.GetString("tracks.favorite"),
+                Items = favourites.Select(Item).ToArray(),
+                IsEnabled = favourites.Count > 0,
+            });
+            foreach (var group in SingerManager.Inst.SingerGroups.OrderBy(pair => pair.Key)) {
+                items.Add(new SingerMenuItemViewModel() {
+                    Header = $"{group.Key}",
+                    Items = group.Value.Select(Item).ToArray(),
+                });
+            }
+            if (items.Count == 0) {
+                items.Add(new SingerMenuItemViewModel() {
+                    Header = ThemeManager.GetString("tracks.nosinger"),
+                    IsEnabled = false,
+                });
+            }
+            items.Add(new SingerMenuItemViewModel() { Header = "-", Height = 1, IsEnabled = false });
+            items.Add(new SingerMenuItemViewModel() {
+                Header = ThemeManager.GetString("tracks.installsinger"),
+                Command = ReactiveCommand.Create(async () => await SingerSelectorCommands.InstallSingerAsync()),
+            });
+            items.Add(new SingerMenuItemViewModel() {
+                Header = ThemeManager.GetString("tracks.opensingers"),
+                Command = ReactiveCommand.Create(SingerSelectorCommands.OpenSingersFolder),
+            });
+            if (!string.IsNullOrWhiteSpace(PathManager.Inst.AdditionalSingersPath) &&
+                Directory.Exists(PathManager.Inst.AdditionalSingersPath)) {
+                items.Add(new SingerMenuItemViewModel() {
+                    Header = ThemeManager.GetString("tracks.openaddsingers"),
+                    Command = ReactiveCommand.Create(SingerSelectorCommands.OpenAdditionalSingersFolder),
+                });
+            }
+            items.Add(new SingerMenuItemViewModel() {
+                Header = ThemeManager.GetString("singers.refresh"),
+                Command = ReactiveCommand.Create(SingerSelectorCommands.RefreshSingers),
+            });
+            items.Add(new SingerMenuItemViewModel() { Header = "-", Height = 1, IsEnabled = false });
+            // The way back to the tile flyout, which it replaces by default.
+            items.Add(new SingerMenuItemViewModel() {
+                Header = ThemeManager.GetString("tracks.singertiles"),
+                Command = ReactiveCommand.Create(UseTileSelector),
+            });
+            SingerMenuItems = items;
+            this.RaisePropertyChanged(nameof(SingerMenuItems));
+        }
+
+        /// <summary>Hands the singer button back to the tile flyout.</summary>
+        public void UseTileSelector() {
+            SingerSelectorSetting.UseCompactMenu = false;
+        }
+
         private bool TryChangePhonemizer(UTrack targetTrack, string phonemizerName) {
             try {
                 var factory = PhonemizerFactory.Get(phonemizerName);

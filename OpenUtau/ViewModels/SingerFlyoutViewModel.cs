@@ -236,65 +236,29 @@ namespace OpenUtau.App.ViewModels {
                 text => SingersViewModel.SetSearchTerms(tile.Singer, text));
         }
 
+        /// <summary>Switches the track header to the compact menu (issue #2467), and closes.</summary>
+        public void UseCompactSelector() {
+            SingerSelectorSetting.UseCompactMenu = true;
+            CloseRequested?.Invoke();
+        }
+
         public async void InstallSinger() {
             CloseRequested?.Invoke();
-            var mainWindow = (Application.Current?.ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)
-                ?.MainWindow as MainWindow;
-            if (mainWindow == null) {
-                return;
-            }
-            var file = await FilePicker.OpenFileAboutSinger(
-                mainWindow, "menu.tools.singer.install", FilePicker.ArchiveFiles);
-            if (file == null) {
-                return;
-            }
-            try {
-                if (file.EndsWith(Core.Vogen.VogenSingerInstaller.FileExt)) {
-                    Core.Vogen.VogenSingerInstaller.Install(file);
-                    return;
-                }
-                if (file.EndsWith(PackageManager.OudepExt)) {
-                    await PackageManager.Inst.InstallFromFileAsync(file);
-                    return;
-                }
-
-                var setup = new SingerSetupDialog() {
-                    DataContext = new SingerSetupViewModel() {
-                        ArchiveFilePath = file,
-                    },
-                };
-                _ = setup.ShowDialog(mainWindow);
-                if (setup.Position.Y < 0) {
-                    setup.Position = setup.Position.WithY(0);
-                }
-            } catch (Exception e) {
-                Log.Error(e, $"Failed to install singer {file}");
-                _ = await MessageBox.ShowError(mainWindow, new MessageCustomizableException($"Failed to install singer {file}", $"<translate:errors.failed.installsinger>: {file}", e));
-            }
+            await SingerSelectorCommands.InstallSingerAsync();
         }
 
         public void OpenSingersFolder() {
-            OpenFolder(PathManager.Inst.SingersPath);
+            CloseRequested?.Invoke();
+            SingerSelectorCommands.OpenSingersFolder();
         }
 
         public void OpenAdditionalSingersFolder() {
-            OpenFolder(PathManager.Inst.AdditionalSingersPath);
-        }
-
-        void OpenFolder(string path) {
             CloseRequested?.Invoke();
-            try {
-                OS.OpenFolder(path);
-            } catch (Exception e) {
-                DocManager.Inst.ExecuteCmd(new ErrorMessageNotification(e));
-            }
+            SingerSelectorCommands.OpenAdditionalSingersFolder();
         }
 
         public void RefreshSingers() {
-            DocManager.Inst.ExecuteCmd(new LoadingNotification(typeof(MainWindow), true, "singer"));
-            SingerManager.Inst.SearchAllSingers();
-            DocManager.Inst.ExecuteCmd(new SingersRefreshedNotification());
-            DocManager.Inst.ExecuteCmd(new LoadingNotification(typeof(MainWindow), false, "singer"));
+            SingerSelectorCommands.RefreshSingers();
         }
 
         // Subscribed only while the flyout is open, so the grid follows singer rescans and installs.

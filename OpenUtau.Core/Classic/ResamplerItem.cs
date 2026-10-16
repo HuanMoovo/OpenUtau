@@ -78,8 +78,7 @@ namespace OpenUtau.Classic {
             tempo = phone.adjustedTempo;
 
             double pitchCountMs = (phone.positionMs + phone.envelope[4].X) - (phone.positionMs - pitchLeadingMs);
-            int pitchCount = (int)Math.Ceiling(MusicMath.TempoMsToTick(tempo, pitchCountMs) / 5.0);
-            pitchCount = Math.Max(pitchCount, 0);
+            int pitchCount = PitchSampleCount(tempo, pitchCountMs);
             pitches = new int[pitchCount];
 
             var phrasePitchStartMs = phrase.positionMs - phrase.leadingMs;
@@ -130,6 +129,36 @@ namespace OpenUtau.Classic {
             phrase.AddCacheFile(inputTemp);
             phrase.AddCacheFile(outputFile);
         }
+        /// <summary>
+        /// The most pitch-bend samples one phoneme's curve can hold. The count is derived
+        /// from project data (one value per 5 ticks), and 5 ticks per sample leaves a
+        /// several-minute note at a few thousand samples; a million is ~43 minutes of one
+        /// note at 120 bpm, well past any real use, and 4 MB. Past the cap the curve is
+        /// truncated and the renderer holds its last value, which is the right outcome for
+        /// a degenerate length: before the cap, a phoneme whose ms span was absurd (or a
+        /// non-finite one, whose cast to int is platform-defined) turned into a multi-GB
+        /// allocation and killed the render thread with "Array dimensions exceeded
+        /// supported range" - the OutOfMemoryException in issue 2395.
+        /// </summary>
+        internal const int MaxPitchSamples = 1_000_000;
+
+        /// <summary>
+        /// The number of pitch-bend samples (one per 5 ticks) covering
+        /// <paramref name="pitchCountMs"/> ms at <paramref name="tempo"/> bpm, saturating at
+        /// <see cref="MaxPitchSamples"/>. A non-finite or non-positive span yields 0, like
+        /// the clamped cast it replaces.
+        /// </summary>
+        internal static int PitchSampleCount(double tempo, double pitchCountMs) {
+            double samples = MusicMath.TempoMsToTick(tempo, pitchCountMs) / 5.0;
+            if (!(samples > 0)) { // also catches NaN
+                return 0;
+            }
+            if (samples >= MaxPitchSamples) {
+                return MaxPitchSamples;
+            }
+            return (int)Math.Ceiling(samples);
+        }
+
         public string GetFlagsString() {
             var builder = new StringBuilder();
             foreach (var flag in flags) {

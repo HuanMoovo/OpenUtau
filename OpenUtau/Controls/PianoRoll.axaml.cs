@@ -343,6 +343,8 @@ namespace OpenUtau.App.Controls {
                 ViewModel.RaisePropertyChanged(nameof(ViewModel.DegreeStyle1));
                 ViewModel.RaisePropertyChanged(nameof(ViewModel.DegreeStyle2));
                 MessageBus.Current.SendMessage(new PianorollRefreshEvent("Part"));
+                // The keyboard draws the degree names, and nothing else carries the change to it.
+                MessageBus.Current.SendMessage(new PianorollRefreshEvent("DegreeStyle"));
             }
         }
         void OnMenuLockStartTime(object sender, RoutedEventArgs args) {

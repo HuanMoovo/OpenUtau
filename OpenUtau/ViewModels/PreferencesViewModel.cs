@@ -434,6 +434,8 @@ namespace OpenUtau.App.ViewModels {
                     Preferences.Default.DegreeStyle = degreeStyle;
                     Preferences.Save();
                     MessageBus.Current.SendMessage(new PianorollRefreshEvent("Part"));
+                    // The piano roll's keyboard draws the degree names.
+                    MessageBus.Current.SendMessage(new PianorollRefreshEvent("DegreeStyle"));
                 });
             this.WhenAnyValue(vm => vm.UseTrackColor)
                 .Skip(1)

@@ -1026,6 +1026,8 @@ General
   <system:String x:Key="tracks.searchterms">Search terms</system:String>
   <system:String x:Key="tracks.searchterms.edit">Edit search terms...</system:String>
   <system:String x:Key="tracks.searchterms.prompt">Extra words that find this singer, separated by commas.</system:String>
+  <system:String x:Key="tracks.singercompact">Compact singer menu</system:String>
+  <system:String x:Key="tracks.singertiles">Singer icons</system:String>
   <system:String x:Key="tracks.expressiongraph">Expression Graph</system:String>
   <system:String x:Key="tracks.expressiongraph.default">Renderer default</system:String>
   <system:String x:Key="tracks.expressiongraph.none">none</system:String>

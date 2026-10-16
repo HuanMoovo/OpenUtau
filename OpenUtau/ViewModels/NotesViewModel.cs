@@ -638,16 +638,20 @@ namespace OpenUtau.App.ViewModels {
             }
             var singer = project.tracks[part.trackNo].Singer;
             lock (portraitLock) {
-                Avatar?.Dispose();
+                // Clear the property before disposing: the avatar Image binds to it, and it must not
+                // be left holding a bitmap that has been disposed.
+                var replacedAvatar = Avatar;
                 Avatar = null;
+                replacedAvatar?.Dispose();
                 if (singer != null && singer.AvatarData != null && Preferences.Default.ShowIcon) {
                     try {
                         using (var stream = new MemoryStream(singer.AvatarData)) {
                             Avatar = new Bitmap(stream);
                         }
                     } catch (Exception e) {
-                        Avatar?.Dispose();
+                        var failedAvatar = Avatar;
                         Avatar = null;
+                        failedAvatar?.Dispose();
                         Log.Error(e, $"Failed to load Avatar {singer.Avatar}");
                     }
                 }
@@ -1376,6 +1380,10 @@ namespace OpenUtau.App.ViewModels {
                 } else if (cmd is RenamePartCommand) {
                     LoadWindowTitle(Part, Project);
                 }
+            } else if (cmd is KeyCommand) {
+                // The keyboard's degree names follow the project key, wherever it changed: this
+                // piano roll's own key menu, the main window's, or an undo of either.
+                UpdateKey();
             } else if (cmd is NoteCommand noteCommand) {
                 CleanupSelectedNotes();
                 if (noteCommand.Part == Part) {

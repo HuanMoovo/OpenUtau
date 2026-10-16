@@ -354,6 +354,18 @@ namespace OpenUtau.Core.Render {
             // Only full-project passes (pre-render / export) maintain the real-curve coverage
             // invariant. Partial playback passes must not trim curves outside their tick window.
             bool maintainCoverage = startTick == 0 && endTick == -1;
+            // A full-project pass publishes the current phrase set of every part, so a
+            // session running underneath has to be re-keyed to that set first. An edit or
+            // a singer change re-renders a part under new content hashes, and the slots
+            // BeginSession published still describe the old set: without this the playing
+            // session keeps serving the old pcm, so a singer change is not heard until
+            // playback restarts. Synchronous and ahead of the render loop, so every phrase
+            // this pass registers finds its slot.
+            if (maintainCoverage) {
+                foreach (var request in requests) {
+                    planner.SyncSessionPart(request.part, SlotSpecsOf(request));
+                }
+            }
             var coverageRanges = maintainCoverage
                 ? new Dictionary<UVoicePart, List<(int start, int end)>>()
                 : null;
@@ -472,6 +484,19 @@ namespace OpenUtau.Core.Render {
             progress.Clear();
             // Immediate final refresh once the pass is done.
             DocManager.Inst.ExecuteCmd(new WaveformReadyNotification());
+        }
+
+        /// <summary>
+        /// A part's current phrases as session slots, in mix order. The placements come
+        /// from the same layouts the pass renders with, so a re-keyed part's slots land
+        /// where its phrases are now.
+        /// </summary>
+        static List<(ulong hash, double offsetMs, double estimatedLengthMs, int channels)> SlotSpecsOf(RenderPartRequest request) {
+            var specs = new List<(ulong, double, double, int)>(request.phrases.Length);
+            for (int i = 0; i < request.phrases.Length; ++i) {
+                specs.Add((request.phrases[i].hash, request.phraseOffsetMs[i], request.phraseEstimatedLengthMs[i], 1));
+            }
+            return specs;
         }
 
         /// <summary>

@@ -4,6 +4,7 @@ using System.Reactive.Linq;
 using Avalonia;
 using Avalonia.Controls.Primitives;
 using Avalonia.Media;
+using OpenUtau.App.ViewModels;
 using OpenUtau.Core;
 using OpenUtau.Core.Util;
 using ReactiveUI;
@@ -51,7 +52,7 @@ namespace OpenUtau.App.Controls {
         }
         public bool IsKeyboard {
             get => _isKeyboard;
-            set => SetAndRaise(IsPianoRollProperty, ref _isKeyboard, value);
+            set => SetAndRaise(IsKeyboardProperty, ref _isKeyboard, value);
         }
         public int Key {
             get => _key;
@@ -67,6 +68,14 @@ namespace OpenUtau.App.Controls {
         public TrackBackground() {
             MessageBus.Current.Listen<ThemeChangedEvent>()
                 .Subscribe(e => InvalidateVisual());
+            // The keyboard's degree names come from the DegreeStyle preference, which carries no
+            // property of its own; the menus that change it announce it instead.
+            MessageBus.Current.Listen<PianorollRefreshEvent>()
+                .Subscribe(e => {
+                    if (e.refreshItem == "DegreeStyle") {
+                        InvalidateVisual();
+                    }
+                });
         }
 
         protected override void OnPropertyChanged(AvaloniaPropertyChangedEventArgs change) {
@@ -74,7 +83,9 @@ namespace OpenUtau.App.Controls {
             if (change.Property == TrackHeightProperty ||
                 change.Property == TrackOffsetProperty ||
                 change.Property == ForegroundProperty ||
-                change.Property == KeyProperty) {
+                change.Property == KeyProperty ||
+                change.Property == IsPianoRollProperty ||
+                change.Property == IsKeyboardProperty) {
                 InvalidateVisual();
             }
         }

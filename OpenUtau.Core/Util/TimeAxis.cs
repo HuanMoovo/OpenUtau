@@ -46,12 +46,19 @@ namespace OpenUtau.Core {
         public long Timestamp { get; private set; }
 
         /// <summary>
-        /// A bpm is only usable if it can be divided by. Zero, NaN or infinity turns
-        /// msPerTick into infinity or NaN, which then poisons msPos of every following
-        /// segment and every ms value derived from them.
+        /// A bpm is only usable if the tick&lt;-&gt;ms conversion it defines is finite and
+        /// positive. Zero, NaN or infinity fail outright, and a subnormal one (below about
+        /// 6.9e-307 at a resolution of 480) overflows msPerTick to infinity while still
+        /// reading as "finite and positive" itself: msPerTick * 0 is NaN, so even tick 0
+        /// then converts to NaN — a playback start that <c>TimeSpan.FromMilliseconds</c>
+        /// rejects, which surfaces to the user as "Failed to render".
         /// </summary>
-        static bool IsValidBpm(double bpm) {
-            return double.IsFinite(bpm) && bpm > 0;
+        static bool IsUsableBpm(double bpm, int resolution) {
+            if (!double.IsFinite(bpm) || bpm <= 0) {
+                return false;
+            }
+            double msPerTick = 60.0 * 1000.0 / (bpm * resolution);
+            return double.IsFinite(msPerTick) && msPerTick > 0;
         }
 
         public void BuildSegments(UProject project) {
@@ -131,13 +138,13 @@ namespace OpenUtau.Core {
                     });
                 }
             }
-            if (!IsValidBpm(tempoSegments[0].bpm)) {
+            if (!IsUsableBpm(tempoSegments[0].bpm, project.resolution)) {
                 // No tempo at tick 0, or one that cannot be divided by. Everything
                 // after inherits from here, so this segment must be valid.
                 tempoSegments[0].bpm = DefaultBpm;
             }
             for (var i = 0; i < tempoSegments.Count - 1; ++i) {
-                if (!IsValidBpm(tempoSegments[i + 1].bpm)) {
+                if (!IsUsableBpm(tempoSegments[i + 1].bpm, project.resolution)) {
                     tempoSegments[i + 1].bpm = tempoSegments[i].bpm;
                 }
                 tempoSegments[i].tickEnd = tempoSegments[i + 1].tickPos;

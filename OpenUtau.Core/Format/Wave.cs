@@ -64,10 +64,33 @@ namespace OpenUtau.Core.Format {
             if (provider.WaveFormat.SampleRate != 44100) {
                 provider = new WdlResamplingSampleProvider(provider, 44100);
             }
-            if (provider.WaveFormat.Channels > 2) {
-                provider = provider.ToStereo();
-            }
+            provider = AtMostStereoSampleProvider(provider);
             return GetSamples(provider);
+        }
+
+        /// <summary>
+        /// The channel count of the samples <see cref="GetStereoSamples"/> returns for a
+        /// source of this format, which is the layout every consumer (peaks, trimming,
+        /// slot mixing, Rmvpe) has to deinterleave with.
+        /// </summary>
+        public static int GetStereoSampleChannels(WaveFormat format) {
+            return Math.Min(format.Channels, 2);
+        }
+
+        /// <summary>
+        /// The provider <see cref="GetStereoSamples"/> reads from. Mono and stereo are kept
+        /// as they are; a file with more than two channels (5.1, 7.1) keeps its first two,
+        /// because NAudio's ToStereo only accepts mono and passing the file through at six
+        /// channels made every consumer stride by six over what it thought was stereo.
+        /// </summary>
+        static ISampleProvider AtMostStereoSampleProvider(ISampleProvider provider) {
+            if (provider.WaveFormat.Channels <= 2) {
+                return provider;
+            }
+            var multiplexer = new MultiplexingSampleProvider(new[] { provider }, 2);
+            multiplexer.ConnectInputToOutput(0, 0);
+            multiplexer.ConnectInputToOutput(1, 1);
+            return multiplexer;
         }
 
         /// <summary>Writes a 44.1 kHz mono float buffer as a 16-bit WAV — the renderer cache file format.</summary>

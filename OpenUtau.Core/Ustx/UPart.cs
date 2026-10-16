@@ -477,7 +477,11 @@ namespace OpenUtau.Core.Ustx {
             try {
                 using (var waveStream = Format.Wave.OpenFile(FilePath)) {
                     fileDurationMs = waveStream.TotalTime.TotalMilliseconds;
-                    channels = waveStream.WaveFormat.Channels;
+                    // The layout of the samples GetStereoSamples decodes below, which is
+                    // what every stride (peaks, skip/trim counts, deinterleaving) uses.
+                    // A file with more than two channels is downmixed to two, so it must
+                    // not keep reporting its file channel count here.
+                    channels = Format.Wave.GetStereoSampleChannels(waveStream.WaveFormat);
                 }
             } catch (Exception e) {
                 Log.Error(e, $"Failed to load wave part {FilePath}");
@@ -546,8 +550,12 @@ namespace OpenUtau.Core.Ustx {
         public (double offsetMs, double estimatedLengthMs, int channels, float[] pcm) GetTrimmedSamples(UProject project) {
             double offsetMs = project.timeAxis.TickPosToMsPos(position);
             double estimatedLengthMs = project.timeAxis.TickPosToMsPos(End) - offsetMs;
-            int skipCount = (int)(GetSkipMs(project) * sampleRate / 1000) * channels;
-            int trimCount = (int)(GetTrimMs(project) * sampleRate / 1000) * channels;
+            // skip and trim come from the project, and a hand-edited or older file can
+            // make them negative or longer than the pcm. An unclamped count then makes
+            // remainingCount exceed the buffer and Array.Copy throws, which fails the whole
+            // playback with "Failed to render"; clamped, the part reads what it has.
+            int skipCount = Math.Clamp((int)(GetSkipMs(project) * sampleRate / 1000) * channels, 0, Samples.Length);
+            int trimCount = Math.Clamp((int)(GetTrimMs(project) * sampleRate / 1000) * channels, 0, Samples.Length - skipCount);
             int remainingCount = Samples.Length - skipCount - trimCount;
             if (remainingCount <= 0) {
                 return (offsetMs, estimatedLengthMs, channels, new float[0]);

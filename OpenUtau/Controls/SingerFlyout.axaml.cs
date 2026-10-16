@@ -168,6 +168,14 @@ namespace OpenUtau.App.Controls {
             hoverClock.Reset();
         }
 
+        // Switches the track header to the compact menu (#2467) and closes this flyout.
+        void CompactSelectorClicked(object? sender, RoutedEventArgs e) {
+            if (DataContext is SingerFlyoutViewModel viewModel) {
+                viewModel.UseCompactSelector();
+            }
+            e.Handled = true;
+        }
+
         void SearchBoxKeyDown(object? sender, KeyEventArgs e) {
             if (DataContext is not SingerFlyoutViewModel viewModel) {
                 return;
