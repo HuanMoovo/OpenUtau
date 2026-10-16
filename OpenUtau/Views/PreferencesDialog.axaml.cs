@@ -143,6 +143,17 @@ namespace OpenUtau.App.Views {
             ((PreferencesViewModel)DataContext!).SetWinePath(winePath);
         }
 
+        // The hotkey rows are generated per command, so they reset through their own button.
+        void ResetGlobalHotkey(object sender, RoutedEventArgs e) {
+            if ((sender as Control)?.DataContext is GlobalHotkeyRowViewModel row) {
+                row.Reset();
+            }
+        }
+
+        void ResetGlobalHotkeys(object sender, RoutedEventArgs e) {
+            viewModel!.ResetGlobalHotkeys();
+        }
+
         void OpenCustomThemeEditor(object sender, RoutedEventArgs e) {
             if (CustomTheme.IsPackageTheme(viewModel!.ThemeName)) return;
             ThemeEditorWindow.Show(CustomTheme.Themes[viewModel!.ThemeName]);

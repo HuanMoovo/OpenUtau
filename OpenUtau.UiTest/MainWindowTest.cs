@@ -43,7 +43,8 @@ namespace OpenUtau.UiTest {
 
         // Opens the main window as the splash window would, runs the test, then saves a screenshot
         // of the final state (also when the test fails) and closes the window.
-        static void WithMainWindow(string name, Action<MainWindow> test) {
+        // Also used by the hotkey tests, which need a real window to press keys on.
+        internal static void WithMainWindow(string name, Action<MainWindow> test) {
             HeadlessUi.Run(() => {
                 InitCore();
                 HeadlessUi.Errors.Clear();

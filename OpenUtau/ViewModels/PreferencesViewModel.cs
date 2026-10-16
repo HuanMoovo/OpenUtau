@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Text.RegularExpressions;
+using Avalonia.Input;
 using OpenUtau.Audio;
 using OpenUtau.Classic;
 using OpenUtau.Core;
@@ -23,6 +24,85 @@ namespace OpenUtau.App.ViewModels {
         }
         public override string ToString() {
             return klass.Name;
+        }
+    }
+
+    /// <summary>
+    /// One row of the Global Hotkeys preferences page: a main-window command and the gesture
+    /// bound to it. What the user typed is kept as text - a half-typed gesture is not thrown
+    /// away - but the binding is only written to the preferences when the gesture parses and
+    /// no other command holds it. Otherwise the row says why it was rejected (issue #2434).
+    /// </summary>
+    public class GlobalHotkeyRowViewModel : ViewModelBase {
+        readonly PreferencesViewModel owner;
+        string gesture;
+        string error = string.Empty;
+
+        public string CommandId { get; }
+        /// <summary>Name of the command, from the menu label it already had.</summary>
+        public string Label { get; }
+
+        public GlobalHotkeyRowViewModel(PreferencesViewModel owner, string commandId) {
+            this.owner = owner;
+            CommandId = commandId;
+            Label = ThemeManager.GetString(GlobalHotkeys.LabelKey(commandId));
+            gesture = GlobalHotkeyCommands.Gesture(commandId, Preferences.Default.GlobalHotkeys);
+        }
+
+        /// <summary>The bound gesture as text, two-way bound to the row's editor.</summary>
+        public string Gesture {
+            get => gesture;
+            set {
+                string text = value ?? string.Empty;
+                if (text == gesture) {
+                    return;
+                }
+                this.RaiseAndSetIfChanged(ref gesture, text);
+                Apply();
+            }
+        }
+
+        /// <summary>Why the gesture in the editor is not in effect; empty when it is.</summary>
+        public string Error {
+            get => error;
+            set {
+                if (error == value) {
+                    return;
+                }
+                this.RaiseAndSetIfChanged(ref error, value);
+                this.RaisePropertyChanged(nameof(HasError));
+            }
+        }
+        public bool HasError => error.Length > 0;
+
+        // Accepts the typed gesture when it is a valid gesture no other command holds, and
+        // stores it in its canonical spelling ("ctrl+p" is stored as "Ctrl+P").
+        void Apply() {
+            if (GlobalHotkeys.TryParse(gesture, out KeyModifiers modifiers, out Key key)
+                && !owner.IsGestureTaken(CommandId, modifiers, key)) {
+                string canonical = GlobalHotkeys.Format(modifiers, key);
+                GlobalHotkeyCommands.SetGesture(CommandId, canonical);
+                if (canonical != gesture) {
+                    gesture = canonical;
+                    this.RaisePropertyChanged(nameof(Gesture));
+                }
+            }
+            // Rejections keep the typed text and let the shared validation explain them.
+            owner.ValidateGlobalHotkeys();
+        }
+
+        public void ReloadGesture() {
+            string current = GlobalHotkeyCommands.Gesture(CommandId, Preferences.Default.GlobalHotkeys);
+            if (current != gesture) {
+                gesture = current;
+                this.RaisePropertyChanged(nameof(Gesture));
+            }
+        }
+
+        /// <summary>Puts this command back on its default gesture.</summary>
+        public void Reset() {
+            GlobalHotkeyCommands.ResetGesture(CommandId);
+            owner.ReloadGlobalHotkeys();
         }
     }
 
@@ -258,6 +338,11 @@ namespace OpenUtau.App.ViewModels {
             DefaultSnapCurve = Preferences.Default.DefaultSnapCurve;
             ClearCacheOnQuit = Preferences.Default.ClearCacheOnQuit;
             Wayland = Preferences.Default.UseWayland;
+            GlobalHotkeyRows = GlobalHotkeyCommands.All
+                .Select(commandId => new GlobalHotkeyRowViewModel(this, commandId))
+                .ToList();
+            // A hand-edited prefs.json can hold a gesture no command should have; surface it.
+            ValidateGlobalHotkeys();
 
             MessageBus.Current.Listen<ThemeEditorStateChangedEvent>()
                 .Subscribe(_ => this.RaisePropertyChanged(nameof(IsThemeEditorOpen)));
@@ -487,6 +572,61 @@ namespace OpenUtau.App.ViewModels {
                 value => Preferences.Default.DiffSingerLangCodeHide = value);
             PersistOn(this.WhenAnyValue(vm => vm.SkipRenderingMutedTracks),
                 skipRenderingMutedTracks => Preferences.Default.SkipRenderingMutedTracks = skipRenderingMutedTracks);
+        }
+
+        // Hotkeys: the main window's configurable commands (issue #2434).
+        public List<GlobalHotkeyRowViewModel> GlobalHotkeyRows { get; }
+
+        /// <summary>
+        /// Flags a gesture that is not a gesture, or that another command already holds. The
+        /// first command in this list wins, exactly like dispatch resolves a key press, so a
+        /// duplicate is flagged on the later row.
+        /// </summary>
+        public void ValidateGlobalHotkeys() {
+            var owners = new List<(GlobalHotkeyRowViewModel row, KeyModifiers modifiers, Key key)>();
+            foreach (var row in GlobalHotkeyRows) {
+                if (!GlobalHotkeys.TryParse(row.Gesture, out KeyModifiers modifiers, out Key key)) {
+                    row.Error = ThemeManager.GetString("prefs.hotkeys.error.invalid");
+                    continue;
+                }
+                var owner = owners.FirstOrDefault(o => o.modifiers == modifiers && o.key == key);
+                if (owner.row == null) {
+                    owners.Add((row, modifiers, key));
+                    row.Error = string.Empty;
+                } else {
+                    row.Error = string.Format(
+                        ThemeManager.GetString("prefs.hotkeys.error.duplicate"), owner.row.Label);
+                }
+            }
+        }
+
+        /// <summary>Whether another row already holds a gesture.</summary>
+        public bool IsGestureTaken(string commandId, KeyModifiers modifiers, Key key) {
+            foreach (var row in GlobalHotkeyRows) {
+                if (row.CommandId == commandId) {
+                    continue;
+                }
+                if (GlobalHotkeys.TryParse(row.Gesture, out KeyModifiers rowModifiers, out Key rowKey)
+                    && rowModifiers == modifiers
+                    && rowKey == key) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        /// <summary>Re-reads every row's gesture, for changes made outside the editors.</summary>
+        public void ReloadGlobalHotkeys() {
+            foreach (var row in GlobalHotkeyRows) {
+                row.ReloadGesture();
+            }
+            ValidateGlobalHotkeys();
+        }
+
+        /// <summary>Puts every command back on its default gesture.</summary>
+        public void ResetGlobalHotkeys() {
+            GlobalHotkeyCommands.ResetAll();
+            ReloadGlobalHotkeys();
         }
 
         public void TestAudioOutputDevice() {

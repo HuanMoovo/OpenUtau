@@ -72,6 +72,7 @@
       <ListBoxItem Content="{DynamicResource prefs.utau}"/>
       <ListBoxItem Content="{DynamicResource prefs.diffsinger}"/>
       <ListBoxItem Content="{DynamicResource prefs.advanced}"/>
+      <ListBoxItem Content="{DynamicResource prefs.hotkeys}"/>
     </ListBox>
     <ScrollViewer Grid.Column="1" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Visible">
       <Carousel Name="PageCarousel" Margin="10" HorizontalAlignment="Stretch" 
@@ -461,15 +462,31 @@
           <TextBox Classes="no-input" HorizontalAlignment="Stretch" Margin="0,4" TextWrapping="Wrap"
                     PlaceholderText="{DynamicResource prefs.placeholdertext.none}" FontSize="11"
                     Text="{Binding WinePath}" IsVisible="{OnPlatform Windows=False, Default=True}" />
-          <Grid HorizontalAlignment="Stretch" ColumnDefinitions="*,10,*,10,*"
-                IsVisible="{OnPlatform Windows=False, Default=True}">
-            <Button Grid.Column="0" Content="{DynamicResource button.reset}"
-                    HorizontalAlignment="Stretch" Click="ResetWinePath"/>
-            <Button Grid.Column="2" Content="{DynamicResource button.select}"
-                    HorizontalAlignment="Stretch" Click="SelectWinePath"/>
-            <Button Grid.Column="4" Content="{DynamicResource prefs.paths.detect}"
-                    HorizontalAlignment="Stretch" Click="DetectWinePath"/>
-          </Grid>
+        </StackPanel>
+
+        <!-- Hotkeys -->
+        <StackPanel>
+          <TextBlock Text="{DynamicResource prefs.hotkeys.scope}" TextWrapping="Wrap" FontSize="11" Margin="0,6,0,2"/>
+          <TextBlock Text="{DynamicResource prefs.hotkeys.description}" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,6"/>
+          <ItemsControl ItemsSource="{Binding GlobalHotkeyRows}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <StackPanel Margin="0,2,0,2">
+                  <Grid ColumnDefinitions="*,8,150,8,Auto">
+                    <TextBlock Grid.Column="0" Text="{Binding Label}"/>
+                    <TextBox Grid.Column="2" Text="{Binding Gesture}"
+                             PlaceholderText="{DynamicResource prefs.hotkeys.placeholder}"/>
+                    <Button Grid.Column="4" Content="{DynamicResource button.reset}"
+                            Click="ResetGlobalHotkey"/>
+                  </Grid>
+                  <TextBlock Text="{Binding Error}" IsVisible="{Binding HasError}"
+                             Foreground="Red" FontSize="11" TextWrapping="Wrap" Margin="0,2,0,0"/>
+                </StackPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+          <Button Content="{DynamicResource prefs.hotkeys.resetall}" HorizontalAlignment="Stretch"
+                  Click="ResetGlobalHotkeys" Margin="0,10,0,0"/>
         </StackPanel>
       </Carousel>
     </ScrollViewer>

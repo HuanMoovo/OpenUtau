@@ -330,6 +330,7 @@ namespace OpenUtau.App.Views {
         }
 
         void OnMainMenuOpened(object sender, RoutedEventArgs args) {
+            viewModel.RefreshHotkeyGestures();
             viewModel.RefreshOpenRecent();
             viewModel.RefreshTemplates();
             viewModel.RefreshCacheSize();
@@ -924,45 +925,44 @@ namespace OpenUtau.App.Views {
                 return;
             }
 
-            GlobalHotkey(args);
+            // The configurable global hotkeys come first: a key that a command holds is
+            // handled there, everything else falls through to the editor's own key table.
+            if (TryDispatchHotkey(args)) {
+                return;
+            }
             if (viewModel.Page == 1) {
                 EditorHotkey(args);
             }
         }
 
-        private void GlobalHotkey(KeyEventArgs args) {
-            if (args.KeyModifiers == KeyModifiers.None) {
-                args.Handled = true;
-                switch (args.Key) {
-                    case Key.F11:
-                        OnMenuFullScreen(this, new RoutedEventArgs());
-                        break;
-                    default:
-                        args.Handled = false;
-                        break;
-                }
-            } else if (args.KeyModifiers == KeyModifiers.Alt) {
-                args.Handled = true;
-                switch (args.Key) {
-                    case Key.F4:
-                        (Application.Current?.ApplicationLifetime as IControlledApplicationLifetime)?.Shutdown();
-                        break;
-                    default:
-                        args.Handled = false;
-                        break;
-                }
-            } else if (args.KeyModifiers == cmdKey) {
-                args.Handled = true;
-                switch (args.Key) {
-                    case Key.N: NewProject(); break;
-                    case Key.O: Open(); break;
-                    default:
-                        args.Handled = false;
-                        break;
-                }
+        /// <summary>
+        /// Runs the command bound to this key press in the user's global hotkey table
+        /// (see <see cref="GlobalHotkeyCommands"/>). Returns false when no command holds the
+        /// gesture, which leaves the key press unhandled for the rest of the window - the way
+        /// every unbound key behaved before hotkeys became configurable.
+        /// </summary>
+        private bool TryDispatchHotkey(KeyEventArgs args) {
+            if (!GlobalHotkeys.TryResolve(args.KeyModifiers, args.Key, viewModel.Page == 1, out string commandId)) {
+                return false;
             }
+            args.Handled = true;
+            switch (commandId) {
+                case GlobalHotkeyCommands.NewProject: NewProject(); break;
+                case GlobalHotkeyCommands.OpenProject: Open(); break;
+                case GlobalHotkeyCommands.Save: _ = Save(); break;
+                case GlobalHotkeyCommands.SaveAs: _ = SaveAs(); break;
+                case GlobalHotkeyCommands.Undo: viewModel.Undo(); break;
+                case GlobalHotkeyCommands.Redo: viewModel.Redo(); break;
+                case GlobalHotkeyCommands.FullScreen: OnMenuFullScreen(this, new RoutedEventArgs()); break;
+                case GlobalHotkeyCommands.Exit:
+                    (Application.Current?.ApplicationLifetime as IControlledApplicationLifetime)?.Shutdown();
+                    break;
+            }
+            return true;
         }
 
+        // Editor keys that are not in the hotkey table above. They belong to the editor's own
+        // key table, like the piano roll keys, and stay fixed for now.
         private void EditorHotkey(KeyEventArgs args) {
             if (args.KeyModifiers == KeyModifiers.None) {
                 args.Handled = true;
@@ -993,11 +993,6 @@ namespace OpenUtau.App.Views {
                 args.Handled = true;
                 switch (args.Key) {
                     case Key.A: viewModel.TracksViewModel.SelectAllParts(); break;
-                    case Key.N: NewProject(); break;
-                    case Key.O: Open(); break;
-                    case Key.S: _ = Save(); break;
-                    case Key.Z: viewModel.Undo(); break;
-                    case Key.Y: viewModel.Redo(); break;
                     case Key.C: viewModel.TracksViewModel.CopyParts(); break;
                     case Key.X: viewModel.TracksViewModel.CutParts(); break;
                     case Key.V: viewModel.TracksViewModel.PasteParts(); break;
@@ -1030,8 +1025,8 @@ namespace OpenUtau.App.Views {
             } else if (args.KeyModifiers == (cmdKey | KeyModifiers.Shift)) {
                 args.Handled = true;
                 switch (args.Key) {
+                    // Redo's second key; redo itself lives in the configurable table.
                     case Key.Z: viewModel.Redo(); break;
-                    case Key.S: _ = SaveAs(); break;
                     default:
                         args.Handled = false;
                         break;

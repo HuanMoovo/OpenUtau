@@ -791,6 +791,13 @@ Warning: this option removes custom presets.</system:String>
   <system:String x:Key="prefs.diffsinger">DiffSinger</system:String>
   <system:String x:Key="prefs.editing">Editing</system:String>
   <system:String x:Key="prefs.general">General</system:String>
+  <system:String x:Key="prefs.hotkeys">Hotkeys</system:String>
+  <system:String x:Key="prefs.hotkeys.description">Click a gesture and type a new one, for example Ctrl+Shift+P. A gesture only takes effect when it is valid and no other command uses it.</system:String>
+  <system:String x:Key="prefs.hotkeys.error.duplicate">Already used by {0}</system:String>
+  <system:String x:Key="prefs.hotkeys.error.invalid">Not a valid hotkey, for example Ctrl+Shift+P</system:String>
+  <system:String x:Key="prefs.hotkeys.placeholder">Ctrl+Shift+P</system:String>
+  <system:String x:Key="prefs.hotkeys.resetall">Restore all defaults</system:String>
+  <system:String x:Key="prefs.hotkeys.scope">Hotkeys of the main window. Piano roll shortcuts are not configurable yet.</system:String>
   <system:String x:Key="prefs.note.restart">Note: please restart OpenUtau after changing this item.</system:String>
   <system:String x:Key="prefs.otoeditor">Oto Editor</system:String>
   <system:String x:Key="prefs.otoeditor.select">Default Oto Editor</system:String>

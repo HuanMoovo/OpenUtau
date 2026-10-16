@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
+using Avalonia.Input;
 using Avalonia.Threading;
 using DynamicData.Binding;
 using OpenUtau.App.Views;
@@ -64,6 +65,13 @@ namespace OpenUtau.App.ViewModels {
             : $"{(DocManager.Inst.ChangesSaved ? "" : "*")}{AppVersion} [{DocManager.Inst.Project.FilePath}]";
         public double Width => Preferences.Default.MainWindowSize.Width;
         public double Height => Preferences.Default.MainWindowSize.Height;
+
+        /// <summary>
+        /// Gesture every menu item advertises, keyed by command id (null = unbound). Comes
+        /// from the configurable global hotkey table (issue #2434) and is refreshed when the
+        /// menu opens, so menu labels follow rebinding.
+        /// </summary>
+        public Dictionary<string, KeyGesture?> HotkeyGestures { get; private set; } = GlobalHotkeys.MenuGestures();
 
         /// <summary>
         ///0: welcome page, 1: tracks page
@@ -358,6 +366,11 @@ namespace OpenUtau.App.ViewModels {
             Warnings.Clear();
             Warnings.AddRange(DocManager.Inst.Warnings.Select(w => new WarningItem(w)));
             HasWarnings = Warnings.Count > 0;
+        }
+
+        public void RefreshHotkeyGestures() {
+            HotkeyGestures = GlobalHotkeys.MenuGestures();
+            this.RaisePropertyChanged(nameof(HotkeyGestures));
         }
 
         public void RefreshOpenRecent() {

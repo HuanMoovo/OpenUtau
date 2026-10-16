@@ -144,6 +144,9 @@ namespace OpenUtau.Core.Util {
                         .Where(s => !string.IsNullOrWhiteSpace(s))
                         .ToList()
                         ?? new List<string>();
+                    // Unknown or empty gestures, and gestures that are the default
+                    // again, are dropped so the map only holds real overrides.
+                    Default.GlobalHotkeys = GlobalHotkeyCommands.Sanitize(Default.GlobalHotkeys);
                 } else {
                     Reset();
                 }
@@ -314,6 +317,14 @@ namespace OpenUtau.Core.Util {
                 """;
             public string RecoveryPath = string.Empty;
             public bool DetachPianoRoll = true;
+
+            /// <summary>
+            /// Global hotkey overrides of the main window, keyed by command id
+            /// ("newProject" -> "Ctrl+Shift+N"); see <see cref="GlobalHotkeyCommands"/>.
+            /// Commands missing here keep their default gesture, the value is a gesture
+            /// string like "Ctrl+Shift+P" so the table round trips through the prefs JSON.
+            /// </summary>
+            public Dictionary<string, string> GlobalHotkeys = new Dictionary<string, string>();
 
             // ----- Mix FX (post-processing) -----
             // Per-track FX state lives in UTrack.MixFx and the project ustx.
